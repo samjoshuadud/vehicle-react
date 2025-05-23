@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, SafeAreaView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { reminders, vehicles } from '@/data/dummyData';
-import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-
+import Input from '@/components/ui/Input';
+import { SafeArea } from '@/components/ui/SafeArea';
+import { useTheme } from '@/context/ThemeContext';
+import { reminders, vehicles } from '@/data/dummyData';
 type RepeatInterval = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'mileage';
 
 export default function EditReminderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { statusBarStyle, backgroundColor } = useTheme();
   
   // Find the reminder based on the ID
   const reminder = reminders.find(r => r.id === id);
@@ -41,7 +43,8 @@ export default function EditReminderScreen() {
   // Handle if reminder not found
   if (!reminder || !vehicle) {
     return (
-      <SafeAreaView style={styles.notFoundContainer}>
+      <SafeArea style={styles.notFoundContainer} statusBarColor={backgroundColor}>
+        <StatusBar style={statusBarStyle} />
         <Text style={styles.notFoundText}>Reminder not found</Text>
         <TouchableOpacity 
           style={styles.backButton}
@@ -49,7 +52,7 @@ export default function EditReminderScreen() {
         >
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </SafeArea>
     );
   }
 
@@ -103,8 +106,8 @@ export default function EditReminderScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+      <StatusBar style={statusBarStyle} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
@@ -300,7 +303,7 @@ export default function EditReminderScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 

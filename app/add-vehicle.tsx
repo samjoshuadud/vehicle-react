@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import { SafeArea } from '@/components/ui/SafeArea';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function AddVehicleScreen() {
   const [make, setMake] = useState('');
@@ -20,6 +21,7 @@ export default function AddVehicleScreen() {
   const [purchaseDate, setPurchaseDate] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { statusBarStyle, backgroundColor } = useTheme();
 
   const handleSave = () => {
     // Validate form fields
@@ -39,8 +41,8 @@ export default function AddVehicleScreen() {
   };
 
   return (
-    <SafeArea style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+      <StatusBar style={statusBarStyle} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}

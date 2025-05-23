@@ -1,17 +1,19 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { SafeArea } from '@/components/ui/SafeArea';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { vehicles } from '@/data/dummyData';
-import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-
+import Input from '@/components/ui/Input';
+import { useTheme } from '@/context/ThemeContext';
+import { vehicles } from '@/data/dummyData';
 type RepeatInterval = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'mileage';
 
 export default function AddReminderScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
+  const { statusBarStyle, backgroundColor } = useTheme();
   
   // Find the vehicle based on the ID
   const vehicle = vehicles.find(v => v.id === vehicleId);
@@ -26,7 +28,7 @@ export default function AddReminderScreen() {
   // Handle if vehicle not found
   if (!vehicle) {
     return (
-      <SafeAreaView style={styles.notFoundContainer}>
+      <SafeArea style={styles.notFoundContainer}>
         <Text style={styles.notFoundText}>Vehicle not found</Text>
         <TouchableOpacity 
           style={styles.backButton}
@@ -34,7 +36,7 @@ export default function AddReminderScreen() {
         >
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </SafeArea>
     );
   }
 
@@ -66,8 +68,9 @@ export default function AddReminderScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+      <StatusBar style={statusBarStyle} />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
@@ -235,7 +238,7 @@ export default function AddReminderScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 

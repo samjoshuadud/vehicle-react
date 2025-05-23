@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, SafeAreaView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { maintenanceLogs, vehicles } from '@/data/dummyData';
-import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import { SafeArea } from '@/components/ui/SafeArea';
+import { useTheme } from '@/context/ThemeContext';
+import { maintenanceLogs, vehicles } from '@/data/dummyData';
 
 export default function EditMaintenanceLogScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,6 +28,8 @@ export default function EditMaintenanceLogScreen() {
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const { statusBarStyle, backgroundColor } = useTheme();
+
   useEffect(() => {
     if (log) {
       setDate(log.date);
@@ -41,7 +45,7 @@ export default function EditMaintenanceLogScreen() {
   // Handle if log not found
   if (!log || !vehicle) {
     return (
-      <SafeAreaView style={styles.notFoundContainer}>
+      <SafeArea style={styles.notFoundContainer}>
         <Text style={styles.notFoundText}>Maintenance log not found</Text>
         <TouchableOpacity 
           style={styles.backButton}
@@ -49,7 +53,7 @@ export default function EditMaintenanceLogScreen() {
         >
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </SafeArea>
     );
   }
 
@@ -105,8 +109,8 @@ export default function EditMaintenanceLogScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+      <StatusBar style={statusBarStyle} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
@@ -211,7 +215,7 @@ export default function EditMaintenanceLogScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 

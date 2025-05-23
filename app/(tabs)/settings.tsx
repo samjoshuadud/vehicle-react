@@ -1,16 +1,22 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Switch, ScrollView, SafeAreaView, Alert } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import Button from '@/components/ui/Button';
+import { SafeArea } from '@/components/ui/SafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-
-import Button from '@/components/ui/Button';
+import { StatusBar } from 'expo-status-bar';
+import React, { useState, useEffect } from 'react';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function SettingsScreen() {
+  const { darkMode, toggleDarkMode, setDarkMode, statusBarStyle } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(false);
   const [useMiles, setUseMiles] = useState(true);
   const [autoBackup, setAutoBackup] = useState(false);
+  
+  // Keep local state in sync with theme context
+  useEffect(() => {
+    // This effect runs when the theme context changes
+  }, [darkMode]);
 
   const handleExportData = () => {
     // In a real app, this would export user data
@@ -45,8 +51,8 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeArea style={styles.container}>
+      <StatusBar style={statusBarStyle} />
       
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
@@ -75,10 +81,10 @@ export default function SettingsScreen() {
               <Text style={styles.settingLabel}>Dark Mode</Text>
             </View>
             <Switch
-              value={darkModeEnabled}
-              onValueChange={setDarkModeEnabled}
+              value={darkMode}
+              onValueChange={toggleDarkMode}
               trackColor={{ false: '#D1D5DB', true: '#BFDBFE' }}
-              thumbColor={darkModeEnabled ? '#3B82F6' : '#9CA3AF'}
+              thumbColor={darkMode ? '#3B82F6' : '#9CA3AF'}
             />
           </View>
           
@@ -208,7 +214,7 @@ export default function SettingsScreen() {
           />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 

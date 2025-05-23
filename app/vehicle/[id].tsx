@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Image, ScrollView, SafeAreaView } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useState } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { vehicles, maintenanceLogs, fuelLogs, reminders } from '@/data/dummyData';
-import MaintenanceLogItem from '@/components/MaintenanceLogItem';
 import FuelLogItem from '@/components/FuelLogItem';
+import MaintenanceLogItem from '@/components/MaintenanceLogItem';
 import ReminderItem from '@/components/ReminderItem';
-
+import { SafeArea } from '@/components/ui/SafeArea';
+import { useTheme } from '@/context/ThemeContext';
+import { fuelLogs, maintenanceLogs, reminders, vehicles } from '@/data/dummyData';
 type TabType = 'maintenance' | 'fuel' | 'reminders';
 
 export default function VehicleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<TabType>('maintenance');
+  const { statusBarStyle, backgroundColor } = useTheme();
   
   // Find the vehicle based on the ID
   const vehicle = vehicles.find(v => v.id === id);
@@ -26,7 +28,7 @@ export default function VehicleDetailScreen() {
   // Handle if vehicle not found
   if (!vehicle) {
     return (
-      <SafeAreaView style={styles.notFoundContainer}>
+      <SafeArea style={styles.notFoundContainer}>
         <Text style={styles.notFoundText}>Vehicle not found</Text>
         <TouchableOpacity 
           style={styles.backButton}
@@ -34,7 +36,7 @@ export default function VehicleDetailScreen() {
         >
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </SafeArea>
     );
   }
   
@@ -68,8 +70,8 @@ export default function VehicleDetailScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
+    <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+      <StatusBar style={statusBarStyle} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -288,7 +290,7 @@ export default function VehicleDetailScreen() {
       >
         <Ionicons name="add" size={24} color="#FFFFFF" />
       </TouchableOpacity>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 
@@ -310,7 +312,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   header: {
-    height: 200,
+    height: 250,
     position: 'relative',
   },
   headerImage: {
@@ -330,7 +332,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: 20,
+    paddingBottom: 40,
   },
   backButton: {
     width: 40,

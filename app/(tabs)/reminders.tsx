@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useTheme } from '@/context/ThemeContext';
+import { SafeArea } from '@/components/ui/SafeArea';
 
 import { reminders, vehicles } from '@/data/dummyData';
 import ReminderItem from '@/components/ReminderItem';
 
 export default function RemindersScreen() {
+  const { statusBarStyle, backgroundColor } = useTheme();
   const [filterType, setFilterType] = useState<'all' | 'upcoming' | 'overdue'>('all');
   
   // Get today's date for comparison
@@ -43,8 +46,8 @@ export default function RemindersScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+      <StatusBar style={statusBarStyle} />
       
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Reminders</Text>
@@ -136,7 +139,7 @@ export default function RemindersScreen() {
           </View>
         }
       />
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 

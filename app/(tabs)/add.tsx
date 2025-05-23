@@ -1,12 +1,15 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { SafeArea } from '@/components/ui/SafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React from 'react';
+import { useTheme } from '@/context/ThemeContext';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { vehicles } from '@/data/dummyData';
 
 export default function AddScreen() {
+  const { statusBarStyle, backgroundColor } = useTheme();
   const handleAddVehicle = () => {
     router.push('/add-vehicle');
   };
@@ -24,8 +27,8 @@ export default function AddScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+      <StatusBar style={statusBarStyle} />
       
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Add New</Text>
@@ -111,7 +114,7 @@ export default function AddScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 

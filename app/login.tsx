@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Image, TouchableOpacity, Text, KeyboardAvoidingView, Platform } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import Input from '../components/ui/Input';
+import { StatusBar } from 'expo-status-bar';
+import React, { useState } from 'react';
+import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 import { SafeArea } from '../components/ui/SafeArea';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const { statusBarStyle, backgroundColor } = useTheme();
 
   const handleLogin = () => {
     // Simulate login process
@@ -33,8 +36,8 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeArea style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+      <StatusBar style={statusBarStyle} />
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}

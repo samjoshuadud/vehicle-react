@@ -2,13 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { SafeArea } from '@/components/ui/SafeArea';
 import VehicleCard from '@/components/VehicleCard';
+import { useTheme } from '@/context/ThemeContext';
 import { vehicles } from '@/data/dummyData';
 
 export default function DashboardScreen() {
   const [searchQuery, setSearchQuery] = useState('');
+  const { statusBarStyle, backgroundColor } = useTheme();
 
   const navigateToVehicleDetail = (vehicleId: string) => {
     router.push(`/vehicle/${vehicleId}`);
@@ -19,12 +22,11 @@ export default function DashboardScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
+    <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+      <StatusBar style={statusBarStyle} />
       
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Hello there,</Text>
           <Text style={styles.title}>Your Vehicles</Text>
         </View>
         
@@ -70,7 +72,7 @@ export default function DashboardScreen() {
           </View>
         }
       />
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 
