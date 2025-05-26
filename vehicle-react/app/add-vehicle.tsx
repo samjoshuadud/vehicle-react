@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -20,8 +21,33 @@ export default function AddVehicleScreen() {
   const [fuelType, setFuelType] = useState('');
   const [purchaseDate, setPurchaseDate] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageUri, setImageUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { statusBarStyle, backgroundColor } = useTheme();
+
+  const pickImage = async () => {
+    // Request permissions
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      alert('Sorry, we need camera roll permissions to make this work!');
+      return;
+    }
+
+    // Pick the image
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+      // Also update the URL state for backend storage (you might want to upload the image to a server)
+      setImageUrl(result.assets[0].uri);
+    }
+  };
 
   const handleSave = () => {
     // Validate form fields
@@ -62,6 +88,22 @@ export default function AddVehicleScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.imageSection}>
+            <TouchableOpacity 
+              style={[styles.imagePickerContainer, imageUri && styles.imagePreviewContainer]} 
+              onPress={pickImage}
+            >
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+              ) : (
+                <>
+                  <Ionicons name="image-outline" size={40} color="#6B7280" />
+                  <Text style={styles.imagePickerText}>Tap to select vehicle image</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.formSection}>
             <Text style={styles.sectionTitle}>Vehicle Information</Text>
             
@@ -221,5 +263,35 @@ const styles = StyleSheet.create({
   buttonContainer: {
     marginTop: 8,
     marginBottom: 32,
+  },
+  imageSection: {
+    marginBottom: 24,
+  },
+  imagePickerContainer: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+  },
+  imagePreviewContainer: {
+    borderStyle: 'solid',
+    borderColor: '#3B82F6',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  imagePickerText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });
