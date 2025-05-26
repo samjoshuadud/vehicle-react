@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  TextInput, 
-  StyleSheet, 
-  TextInputProps, 
-  View, 
-  Text, 
-  TouchableOpacity 
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TextInputProps,
+  TouchableOpacity,
+  ViewStyle,
+  StyleProp,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -16,6 +18,7 @@ interface InputProps extends TextInputProps {
   rightIcon?: React.ReactNode;
   isPassword?: boolean;
   touched?: boolean;
+  style?: any;
 }
 
 const Input: React.FC<InputProps> = ({
@@ -35,13 +38,12 @@ const Input: React.FC<InputProps> = ({
   const handleBlur = () => setIsFocused(false);
   
   const toggleSecureEntry = () => setSecureTextEntry(!secureTextEntry);
-
-  const inputContainerStyle = [
+  const inputContainerStyle: StyleProp<ViewStyle> = [
     styles.inputContainer,
-    isFocused && styles.inputContainerFocused,
-    error && touched && styles.inputContainerError,
-    leftIcon && styles.inputContainerWithLeftIcon,
-    rightIcon && styles.inputContainerWithRightIcon,
+    isFocused ? styles.inputContainerFocused : undefined,
+    (error && touched) ? styles.inputContainerError : undefined,
+    leftIcon ? styles.inputContainerWithLeftIcon : undefined,
+    rightIcon ? styles.inputContainerWithRightIcon : undefined,
   ];
 
   return (

@@ -7,6 +7,10 @@ type ThemeContextType = {
   setDarkMode: (enabled: boolean) => void;
   statusBarStyle: 'light' | 'dark';
   backgroundColor: string;
+  currency: string;
+  currencySymbol: string;
+  distanceUnit: 'km' | 'mi';
+  volumeUnit: 'L' | 'gal';
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -27,10 +31,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const toggleDarkMode = () => {
     setDarkMode(prev => !prev);
   };
-
   // Compute values based on current theme
   const statusBarStyle = darkMode ? 'light' : 'dark';
   const backgroundColor = darkMode ? '#1F2937' : '#F9FAFB';
+
+  // Set the locale preferences for the Philippines
+  const currency = 'PHP';
+  const currencySymbol = '₱';
+  const distanceUnit = 'km' as const;
+  const volumeUnit = 'L' as const;
 
   return (
     <ThemeContext.Provider
@@ -40,6 +49,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setDarkMode,
         statusBarStyle,
         backgroundColor,
+        currency,
+        currencySymbol,
+        distanceUnit,
+        volumeUnit,
       }}
     >
       {children}

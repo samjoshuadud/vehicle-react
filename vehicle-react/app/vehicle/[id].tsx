@@ -109,7 +109,7 @@ export default function VehicleDetailScreen() {
         <View style={styles.statItem}>
           <Ionicons name="speedometer-outline" size={24} color="#3B82F6" />
           <Text style={styles.statValue}>{vehicle.mileage.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>Miles</Text>
+          <Text style={styles.statLabel}>Kilometers</Text>
         </View>
         
         <View style={styles.statDivider} />
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   header: {
-    height: 250,
+    height: 200,
     position: 'relative',
   },
   headerImage: {
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 42,
   },
   backButton: {
     width: 40,

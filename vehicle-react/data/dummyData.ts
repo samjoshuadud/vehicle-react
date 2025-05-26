@@ -28,7 +28,7 @@ export interface FuelLog {
   id: string;
   vehicleId: string;
   date: string;
-  gallons: number;
+  liters: number;
   cost: number;
   mileage: number;
   location: string;
@@ -140,8 +140,8 @@ export const fuelLogs: FuelLog[] = [
     id: '1',
     vehicleId: '1',
     date: '2023-06-01',
-    gallons: 12.5,
-    cost: 43.75,
+    liters: 45.5,
+    cost: 2775.50, // ~61 PHP/L
     mileage: 34500,
     location: 'Shell',
     isFull: true,
@@ -150,34 +150,22 @@ export const fuelLogs: FuelLog[] = [
     id: '2',
     vehicleId: '1',
     date: '2023-06-15',
-    gallons: 11.8,
-    cost: 41.30,
+    liters: 42.8,
+    cost: 2611.00,
     mileage: 34900,
-    location: 'Chevron',
+    location: 'Petron',
     isFull: true,
   },
   {
     id: '3',
     vehicleId: '2',
     date: '2023-06-10',
-    gallons: 14.2,
-    cost: 49.70,
-    mileage: 11500,
-    location: 'Costco',
-    isFull: true,
-    notes: 'Used member discount',
-  },
-  {
-    id: '4',
-    vehicleId: '3',
-    date: '2023-06-05',
-    gallons: 0,
-    cost: 15.00,
-    mileage: 7800,
+    liters: 0, // Electric vehicle
+    cost: 350.00,
+    mileage: 12500,
     location: 'Home Charger',
     isFull: true,
-    notes: 'Full charge at home',
-  },
+  }
 ];
 
 export const reminders: Reminder[] = [

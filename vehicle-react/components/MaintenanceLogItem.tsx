@@ -43,7 +43,7 @@ const MaintenanceLogItem: React.FC<MaintenanceLogItemProps> = ({ log, onPress })
           
           <View style={styles.detailItem}>
             <Ionicons name="speedometer-outline" size={14} color="#6B7280" />
-            <Text style={styles.detailText}>{log.mileage.toLocaleString()} mi</Text>
+            <Text style={styles.detailText}>{log.mileage.toLocaleString()} km</Text>
           </View>
           
           <View style={styles.detailItem}>

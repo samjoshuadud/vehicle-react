@@ -12,13 +12,13 @@ import { vehicles } from '@/data/dummyData';
 
 export default function AddFuelLogScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
-  const { statusBarStyle, backgroundColor } = useTheme();
+  const { statusBarStyle, backgroundColor, currencySymbol } = useTheme();
   
   // Find the vehicle based on the ID
   const vehicle = vehicles.find(v => v.id === vehicleId);
   
   const [date, setDate] = useState('');
-  const [gallons, setGallons] = useState('');
+  const [liters, setLiters] = useState('');
   const [cost, setCost] = useState('');
   const [mileage, setMileage] = useState(vehicle?.mileage.toString() || '');
   const [location, setLocation] = useState('');
@@ -49,8 +49,8 @@ export default function AddFuelLogScreen() {
       return;
     }
 
-    // For electric vehicles, gallons can be 0
-    if (vehicle.fuelType !== 'Electric' && !gallons) {
+    // For electric vehicles, liters can be 0
+    if (vehicle.fuelType !== 'Electric' && !liters) {
       console.log('Please enter the amount of fuel');
       return;
     }
@@ -70,25 +70,13 @@ export default function AddFuelLogScreen() {
   return (
     <SafeArea style={styles.container} statusBarColor={backgroundColor}>
       <StatusBar style={statusBarStyle} />
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidingView}
+        style={{ flex: 1 }}
       >
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {isElectric ? 'Add Charging Log' : 'Add Fuel Log'}
-          </Text>
-          <View style={styles.headerRight} />
-        </View>
-
-        <View style={styles.vehicleInfo}>
-          <Ionicons name="car" size={20} color="#F59E0B" />
+          <Text style={styles.heading}>{isElectric ? 'Add Charging Log' : 'Add Fuel Log'}</Text>
           <Text style={styles.vehicleName}>
             {vehicle.year} {vehicle.make} {vehicle.model}
           </Text>
@@ -108,10 +96,10 @@ export default function AddFuelLogScreen() {
           
           {!isElectric ? (
             <Input
-              label="Gallons *"
+              label="Liters *"
               placeholder="Amount of fuel"
-              value={gallons}
-              onChangeText={setGallons}
+              value={liters}
+              onChangeText={setLiters}
               keyboardType="decimal-pad"
               leftIcon={<Ionicons name="water-outline" size={20} color="#6B7280" />}
             />
@@ -119,8 +107,8 @@ export default function AddFuelLogScreen() {
             <Input
               label="kWh (optional)"
               placeholder="Amount of electricity"
-              value={gallons}
-              onChangeText={setGallons}
+              value={liters}
+              onChangeText={setLiters}
               keyboardType="decimal-pad"
               leftIcon={<Ionicons name="flash-outline" size={20} color="#6B7280" />}
             />
@@ -128,7 +116,7 @@ export default function AddFuelLogScreen() {
           
           <Input
             label="Cost *"
-            placeholder="Total cost in dollars"
+            placeholder={`Total cost in ${currencySymbol}`}
             value={cost}
             onChangeText={setCost}
             keyboardType="decimal-pad"
@@ -137,7 +125,7 @@ export default function AddFuelLogScreen() {
           
           <Input
             label="Odometer Reading *"
-            placeholder="Current vehicle mileage"
+            placeholder="Current vehicle mileage (km)"
             value={mileage}
             onChangeText={setMileage}
             keyboardType="number-pad"
@@ -231,19 +219,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  headerTitle: {
+  heading: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
-  },
-  headerRight: {
-    width: 40,
-  },
-  vehicleInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#FEF3C7',
   },
   vehicleName: {
     fontSize: 16,

@@ -1,3 +1,4 @@
+import { SafeArea } from '@/components/ui/SafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -6,34 +7,30 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, 
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
-import { fuelLogs, vehicles } from '@/data/dummyData';
+import { vehicles, fuelLogs } from '@/data/dummyData';
 
 export default function EditFuelLogScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { statusBarStyle, backgroundColor, currencySymbol } = useTheme();
   
-  // Find the fuel log based on the ID
+  // Find the log and associated vehicle
   const log = fuelLogs.find(l => l.id === id);
-  
-  // Find the vehicle based on the vehicle ID in the log
   const vehicle = log ? vehicles.find(v => v.id === log.vehicleId) : null;
   
   const [date, setDate] = useState('');
-  const [gallons, setGallons] = useState('');
+  const [liters, setLiters] = useState('');
   const [cost, setCost] = useState('');
   const [mileage, setMileage] = useState('');
   const [location, setLocation] = useState('');
-  const [isFull, setIsFull] = useState(false);
+  const [isFull, setIsFull] = useState(true);
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  const { statusBarStyle, backgroundColor } = useTheme();
 
   useEffect(() => {
     if (log) {
       setDate(log.date);
-      setGallons(log.gallons.toString());
+      setLiters(log.liters.toString());
       setCost(log.cost.toString());
       setMileage(log.mileage.toString());
       setLocation(log.location || '');
@@ -59,15 +56,17 @@ export default function EditFuelLogScreen() {
 
   const handleSave = () => {
     // Validate form fields
-    if (!date || !gallons || !cost || !mileage) {
+    if (!date || !cost || !mileage) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
 
     // Validate numeric fields
-    if (isNaN(parseFloat(gallons)) || parseFloat(gallons) <= 0) {
-      Alert.alert('Invalid Gallons', 'Please enter a valid gallons value');
-      return;
+    if (vehicle.fuelType !== 'Electric') {
+      if (isNaN(parseFloat(liters)) || parseFloat(liters) <= 0) {
+        Alert.alert('Invalid Amount', 'Please enter a valid fuel amount in liters');
+        return;
+      }
     }
 
     if (isNaN(parseFloat(cost)) || parseFloat(cost) <= 0) {
@@ -99,11 +98,9 @@ export default function EditFuelLogScreen() {
           text: 'Delete', 
           style: 'destructive',
           onPress: () => {
-            // Simulate deleting from backend
             setIsLoading(true);
             setTimeout(() => {
               setIsLoading(false);
-              // Navigate back to vehicle detail after successful delete
               router.back();
             }, 1000);
           }
@@ -114,31 +111,22 @@ export default function EditFuelLogScreen() {
 
   // Calculate fuel economy if possible
   const calculateFuelEconomy = () => {
-    // In a real app, this would look at previous fuel logs to calculate MPG
-    // For now, we'll just return a placeholder
-    return '25.3 MPG';
+    // In a real app, this would look at previous fuel logs to calculate km/Liters
+    return vehicle.fuelType === 'Electric' ? 'N/A' : '10.7 km/Liters';
   };
+
+  const isElectric = vehicle.fuelType === 'Electric';
 
   return (
     <SafeArea style={styles.container} statusBarColor={backgroundColor}>
       <StatusBar style={statusBarStyle} />
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidingView}
+        style={{ flex: 1 }}
       >
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Fuel Log</Text>
-          <View style={styles.headerRight} />
-        </View>
-
-        <View style={styles.vehicleInfo}>
-          <Ionicons name="car" size={20} color="#3B82F6" />
+          <Text style={styles.heading}>Edit {isElectric ? 'Charging' : 'Fuel'} Log</Text>
           <Text style={styles.vehicleName}>
             {vehicle.year} {vehicle.make} {vehicle.model}
           </Text>
@@ -156,18 +144,20 @@ export default function EditFuelLogScreen() {
             leftIcon={<Ionicons name="calendar-outline" size={20} color="#6B7280" />}
           />
           
-          <Input
-            label="Gallons *"
-            placeholder="e.g. 12.5"
-            value={gallons}
-            onChangeText={setGallons}
-            keyboardType="decimal-pad"
-            leftIcon={<Ionicons name="flash-outline" size={20} color="#6B7280" />}
-          />
+          {!isElectric && (
+            <Input
+              label="Liters *"
+              placeholder="Amount of fuel"
+              value={liters}
+              onChangeText={setLiters}
+              keyboardType="decimal-pad"
+              leftIcon={<Ionicons name="water-outline" size={20} color="#6B7280" />}
+            />
+          )}
           
           <Input
-            label="Total Cost *"
-            placeholder="e.g. 45.75"
+            label="Cost *"
+            placeholder={`Total cost in ${currencySymbol}`}
             value={cost}
             onChangeText={setCost}
             keyboardType="decimal-pad"
@@ -175,8 +165,8 @@ export default function EditFuelLogScreen() {
           />
           
           <Input
-            label="Current Mileage *"
-            placeholder="Odometer reading"
+            label="Odometer Reading *"
+            placeholder="Current vehicle mileage (km)"
             value={mileage}
             onChangeText={setMileage}
             keyboardType="number-pad"
@@ -185,7 +175,7 @@ export default function EditFuelLogScreen() {
           
           <Input
             label="Location"
-            placeholder="e.g. Shell, Chevron"
+            placeholder="Where you filled up"
             value={location}
             onChangeText={setLocation}
             leftIcon={<Ionicons name="location-outline" size={20} color="#6B7280" />}
@@ -282,19 +272,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  headerTitle: {
+  heading: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
-  },
-  headerRight: {
-    width: 40,
-  },
-  vehicleInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#EBF5FF',
   },
   vehicleName: {
     fontSize: 16,

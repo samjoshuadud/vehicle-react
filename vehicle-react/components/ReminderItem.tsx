@@ -21,7 +21,7 @@ const ReminderItem: React.FC<ReminderItemProps> = ({
     }
     
     if (reminder.repeatInterval === 'mileage' && reminder.mileageInterval) {
-      return `Every ${reminder.mileageInterval.toLocaleString()} miles`;
+      return `Every ${reminder.mileageInterval.toLocaleString()} liters`;
     }
     
     return `Repeats ${reminder.repeatInterval}`;

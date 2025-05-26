@@ -1,4 +1,3 @@
-import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -15,9 +14,8 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { statusBarStyle, backgroundColor } = useTheme();
-  const { register } = useAuth();
 
+  const { statusBarStyle, backgroundColor } = useTheme();
   const handleSignup = async () => {
     // Validate inputs
     if (!name || !email || !password || !confirmPassword) {
@@ -39,10 +37,14 @@ export default function SignupScreen() {
 
     setIsLoading(true);
     try {
-      await register(email, password, name);
+      // Simulate registration delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // In a real app, this is where you'd make an API call to register the user
+      // For now, we'll just simulate success and navigate to the main app
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message || 'Failed to create account');
+      Alert.alert('Registration Failed', 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -104,12 +106,12 @@ export default function SignupScreen() {
               onChangeText={setConfirmPassword}
               isPassword
               leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#6B7280" />}
-            />              <Button
-                title="Sign Up"
-                onPress={handleSignup}
-                loading={isLoading}
-                fullWidth
-              />
+            />            <Button
+              title="Sign Up"
+              onPress={handleSignup}
+              loading={isLoading}
+              fullWidth
+            />
           </View>
 
           <View style={styles.footer}>
@@ -156,24 +158,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
-  },
-  formContainer: {
+  },  formContainer: {
     marginBottom: 24,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  dividerText: {
-    paddingHorizontal: 16,
-    color: '#6B7280',
-    fontSize: 14,
   },
   footer: {
     flexDirection: 'row',

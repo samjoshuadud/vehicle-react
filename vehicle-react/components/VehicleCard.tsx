@@ -31,7 +31,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onPress }) => {
         <View style={styles.detailsContainer}>
           <View style={styles.detailItem}>
             <Ionicons name="speedometer-outline" size={16} color="#4B5563" />
-            <Text style={styles.detailText}>{vehicle.mileage.toLocaleString()} mi</Text>
+            <Text style={styles.detailText}>{vehicle.mileage.toLocaleString()} km</Text>
           </View>
           
           <View style={styles.detailItem}>
