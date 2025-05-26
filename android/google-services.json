@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "1087198592087",
+    "project_id": "vehicle-b7c9a",
+    "storage_bucket": "vehicle-b7c9a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1087198592087:android:a6e6e9f0ba558a05d5b712",
+        "android_client_info": {
+          "package_name": "com.samjoshuadud.vehicle"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1087198592087-3uc2k6210hgsvi6kmkgjs29g3jndb9ol.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyArS0g2rBsWekm7yAM0msIkfX7ZDNoUcvQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1087198592087-3uc2k6210hgsvi6kmkgjs29g3jndb9ol.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1087198592087-ua3m0asu1vf3ffkbsaeoemsrc89t3rcs.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.samjoshuadud.vehicle"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

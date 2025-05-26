@@ -1,9 +1,10 @@
+import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { SafeArea } from '../components/ui/SafeArea';
@@ -16,32 +17,52 @@ export default function SignupScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const { statusBarStyle, backgroundColor } = useTheme();
+  const { register, googleSignIn } = useAuth();
 
-  const handleSignup = () => {
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      // In a real app, you would show an error message
-      console.log('Passwords do not match');
+  const handleSignup = async () => {
+    // Validate inputs
+    if (!name || !email || !password || !confirmPassword) {
+      Alert.alert('Missing Information', 'Please fill in all fields');
       return;
     }
 
-    // Simulate signup process
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Passwords do not match');
+      return;
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      Alert.alert('Weak Password', 'Password must be at least 6 characters long');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      // Navigate to the main app after successful signup
+    try {
+      await register(email, password, name);
       router.replace('/(tabs)');
-    }, 1500);
+    } catch (error: any) {
+      Alert.alert('Registration Failed', error.message || 'Failed to create account');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleSignUp = () => {
-    // Placeholder for Google Sign-Up integration
-    // This would be replaced with actual Auth0 Google authentication
+  const handleGoogleSignUp = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      // For now, show an alert that Google sign-in needs configuration
+      Alert.alert(
+        'Google Sign-In', 
+        'Google authentication needs to be configured with your Firebase project. Please use email/password for now or complete the Firebase setup.',
+        [{ text: 'OK' }]
+      );
+    } catch (error: any) {
+      Alert.alert('Google Sign Up Failed', error.message || 'Failed to sign up with Google');
+    } finally {
       setIsLoading(false);
-      router.replace('/(tabs)');
-    }, 1500);
+    }
   };
 
   const navigateToLogin = () => {

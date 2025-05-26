@@ -8,8 +8,10 @@
     "scheme": "vehicle",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "owner": "samjoshuadud",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.samjoshuadud.vehicle"
     },
     "android": {
       "adaptiveIcon": {
@@ -34,7 +36,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
