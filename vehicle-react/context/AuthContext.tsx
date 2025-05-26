@@ -1,13 +1,11 @@
-import { User } from 'firebase/auth';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import {
-    onAuthStateChange,
-    signInWithEmail,
-    signInWithGoogle,
-    signInWithGoogleNative,
-    signOut,
-    signUpWithEmail
-} from '../services/authService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+}
 
 interface AuthContextProps {
   user: User | null;
@@ -15,8 +13,6 @@ interface AuthContextProps {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
-  googleSignIn: (idToken: string, accessToken?: string) => Promise<void>;
-  googleSignInNative: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -35,51 +31,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      setUser(user);
-      setIsLoading(false);
-    });
-
-    return unsubscribe;
+    loadUser();
   }, []);
+
+  const loadUser = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('user');
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     try {
-      await signInWithEmail(email, password);
+      // TODO: Replace with your actual authentication logic
+      const mockUser = {
+        id: '1',
+        email,
+        name: 'User',
+      };
+      await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+      setUser(mockUser);
     } catch (error) {
-      throw error;
+      throw new Error('Login failed');
     }
   };
 
   const register = async (email: string, password: string, name?: string) => {
     try {
-      await signUpWithEmail(email, password, name);
+      // TODO: Replace with your actual registration logic
+      const mockUser = {
+        id: '1',
+        email,
+        name: name || 'User',
+      };
+      await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+      setUser(mockUser);
     } catch (error) {
-      throw error;
-    }
-  };
-
-  const googleSignIn = async (idToken: string, accessToken?: string) => {
-    try {
-      await signInWithGoogle(idToken, accessToken);
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const googleSignInNative = async () => {
-    try {
-      await signInWithGoogleNative();
-    } catch (error) {
-      throw error;
+      throw new Error('Registration failed');
     }
   };
 
   const logout = async () => {
     try {
-      await signOut();
+      await AsyncStorage.removeItem('user');
+      setUser(null);
     } catch (error) {
-      throw error;
+      throw new Error('Logout failed');
     }
   };
 
@@ -89,8 +92,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: !!user,
     login,
     register,
-    googleSignIn,
-    googleSignInNative,
     logout,
   };
 

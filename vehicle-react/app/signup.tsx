@@ -15,9 +15,8 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
   const { statusBarStyle, backgroundColor } = useTheme();
-  const { register, googleSignIn } = useAuth();
+  const { register } = useAuth();
 
   const handleSignup = async () => {
     // Validate inputs
@@ -48,23 +47,6 @@ export default function SignupScreen() {
       setIsLoading(false);
     }
   };
-
-  const handleGoogleSignUp = async () => {
-    setIsLoading(true);
-    try {
-      // For now, show an alert that Google sign-in needs configuration
-      Alert.alert(
-        'Google Sign-In', 
-        'Google authentication needs to be configured with your Firebase project. Please use email/password for now or complete the Firebase setup.',
-        [{ text: 'OK' }]
-      );
-    } catch (error: any) {
-      Alert.alert('Google Sign Up Failed', error.message || 'Failed to sign up with Google');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const navigateToLogin = () => {
     router.replace('/login');
   };
@@ -122,28 +104,12 @@ export default function SignupScreen() {
               onChangeText={setConfirmPassword}
               isPassword
               leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#6B7280" />}
-            />
-
-            <Button
-              title="Sign Up"
-              onPress={handleSignup}
-              loading={isLoading}
-              fullWidth
-            />
-
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.divider} />
-            </View>
-
-            <Button
-              title="Sign Up with Google"
-              onPress={handleGoogleSignUp}
-              variant="outline"
-              fullWidth
-              icon={<Ionicons name="logo-google" size={20} color="#3B82F6" />}
-            />
+            />              <Button
+                title="Sign Up"
+                onPress={handleSignup}
+                loading={isLoading}
+                fullWidth
+              />
           </View>
 
           <View style={styles.footer}>
