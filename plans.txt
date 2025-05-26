@@ -1,2 +1,89 @@
-Vehicle image url (for now url, but later we can pick from our storage) in add vehicle
-plan for better mileage, if we should stick with toggle mileage (rn default is miles)
+Backend Development Steps:
+
+1. Authentication & Security:
+   - Implement refresh tokens for better security
+   - Add rate limiting for API endpoints
+   - Add request logging middleware
+   - Implement API key authentication for external services
+   - Add password reset functionality
+   - Add email verification
+
+2. File Upload System:
+   - Set up file upload endpoint for vehicle images
+   - Implement file validation and sanitization
+   - Add file size limits and type restrictions
+   - Create file cleanup for unused images
+   - Implement image resizing service
+   - Add support for multiple image uploads
+
+3. Database Optimizations:
+   - Add database migrations system
+   - Implement data pagination for large datasets
+   - Add caching layer (Redis)
+   - Optimize database queries
+   - Add database backup system
+   - Implement soft delete functionality
+
+4. API Enhancements:
+   - Add bulk operations endpoints
+   - Implement websockets for real-time updates
+   - Add statistics endpoints for dashboards
+   - Create export endpoints (CSV, PDF)
+   - Add vehicle history aggregation endpoints
+   - Implement search functionality
+
+5. Integration Features:
+   - Add external APIs for fuel prices
+   - Implement VIN decoder service
+   - Add vehicle specs database integration
+   - Implement geolocation services
+   - Add weather API integration
+
+Frontend Development Steps:
+
+1. Vehicle Image Handling:
+   - Phase 1: URL-based images
+     ✓ Basic URL input for vehicle images
+     ✓ Image preview in vehicle details
+   - Phase 2: Local Storage Implementation
+     - Implement image upload functionality
+     - Set up secure file storage
+     - Add image compression/optimization
+     - Support multiple images per vehicle
+     - Add image deletion capability
+
+2. Mileage System Enhancement:
+   - Current: Default is kilometers with toggle to miles
+   - Improvements needed:
+     - Add unit conversion utilities
+     - Update all displays to respect user's preference
+     - Add conversion handling in:
+       * Vehicle mileage
+       * Maintenance records
+       * Fuel logs
+       * Reminders based on mileage
+     - Add bulk conversion when user changes preference
+     - Store both values in database for accuracy
+
+3. Fuel Efficiency Features:
+   - Add fuel economy calculations
+   - Implement tracking in both L/100km and km/L
+   - Add fuel cost analysis
+   - Create fuel economy trends/graphs
+   - Add refuel reminders based on average consumption
+
+4. Enhancement Areas:
+   - Add data validation for mileage entries
+   - Improve error handling for file uploads
+   - Add batch operations for maintenance/fuel logs
+   - Implement data export/import functionality
+   - Add backup/restore capabilities
+   - Create maintenance schedule suggestions
+   - Add vehicle service history reports
+
+5. Mobile Specific Features:
+   - Implement offline support
+   - Add push notifications for reminders
+   - Add camera integration for photos
+   - Implement location services for fuel stations
+   - Add OCR for receipt scanning
