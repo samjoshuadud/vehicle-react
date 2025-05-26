@@ -33,6 +33,7 @@ pip install fastapi uvicorn sqlalchemy pymysql python-dotenv pydantic cryptograp
 
 4. Set up environment variables:
 i use phpmyadmin here so it will be different (i think?)
+
 Create a `.env` file in the vehicle-python directory with:
 ```env
 DATABASE_URL=mysql+pymysql://root:@localhost:3306/vehicle
