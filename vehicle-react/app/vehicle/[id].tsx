@@ -1,31 +1,112 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 
 import FuelLogItem from '@/components/FuelLogItem';
 import MaintenanceLogItem from '@/components/MaintenanceLogItem';
 import ReminderItem from '@/components/ReminderItem';
 import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
-import { fuelLogs, maintenanceLogs, reminders, vehicles } from '@/data/dummyData';
+import { useVehicles } from '@/context/VehiclesContext';
+import { useAuth } from '@/context/AuthContext';
+import { useReminders } from '@/context/RemindersContext';
+import { apiService } from '@/services/api';
+import { Vehicle, MaintenanceLog, FuelLog, Reminder as APIReminder } from '@/services/api';
+import { Reminder as UIReminder } from '@/data/dummyData';
+
+// Transform API reminder to UI reminder format for vehicle-specific filtering
+const transformReminder = (apiReminder: APIReminder): UIReminder => ({
+  id: apiReminder.reminder_id.toString(),
+  vehicleId: apiReminder.user_id.toString(), // This will be fixed when the API is updated
+  title: apiReminder.title,
+  description: apiReminder.description || '',
+  date: apiReminder.due_date,
+  isCompleted: false, // API doesn't have this field yet
+  repeatInterval: apiReminder.repeat_interval as any || 'none',
+});
+
 type TabType = 'maintenance' | 'fuel' | 'reminders';
 
 export default function VehicleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<TabType>('maintenance');
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
+  const [fuelLogs, setFuelLogs] = useState<FuelLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const { statusBarStyle, backgroundColor } = useTheme();
+  const { vehicles, refreshVehicles } = useVehicles();
+  const { token } = useAuth();
+  const { reminders, isLoading: isLoadingReminders, refreshReminders } = useReminders();
+
+  // Find the vehicle from context first, then fetch details if needed
+  useEffect(() => {
+    const loadVehicleData = async () => {
+      if (!id || !token) return;
+
+      setIsLoading(true);
+      try {
+        // First try to find the vehicle in context
+        const contextVehicle = vehicles.find(v => v.vehicle_id?.toString() === id);
+        if (contextVehicle) {
+          setVehicle(contextVehicle);
+        } else {
+          // If not found in context, fetch from API
+          const vehicleData = await apiService.getVehicleById(token, parseInt(id));
+          setVehicle(vehicleData);
+        }
+      } catch (error: any) {
+        console.error('Error loading vehicle:', error);
+        Alert.alert('Error', 'Failed to load vehicle details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadVehicleData();
+  }, [id, vehicles, token]);
+
+  // Load logs when tab changes
+  useEffect(() => {
+    const loadLogs = async () => {
+      if (!id || !vehicle || !token) return;
+
+      setIsLoadingLogs(true);
+      try {
+        if (activeTab === 'maintenance') {
+          const logs = await apiService.getMaintenanceLogs(token, parseInt(id));
+          setMaintenanceLogs(logs);
+        } else if (activeTab === 'fuel') {
+          const logs = await apiService.getFuelLogs(token, parseInt(id));
+          setFuelLogs(logs);
+        } else if (activeTab === 'reminders') {
+          // Refresh reminders when switching to reminders tab
+          await refreshReminders();
+        }
+      } catch (error: any) {
+        console.error('Error loading logs:', error);
+        // Don't show error for logs as they might not exist yet
+      } finally {
+        setIsLoadingLogs(false);
+      }
+    };
+
+    loadLogs();
+  }, [activeTab, id, vehicle, token, refreshReminders]);
   
-  // Find the vehicle based on the ID
-  const vehicle = vehicles.find(v => v.id === id);
-  
-  // Filter logs and reminders for this vehicle
-  const vehicleMaintenanceLogs = maintenanceLogs.filter(log => log.vehicleId === id);
-  const vehicleFuelLogs = fuelLogs.filter(log => log.vehicleId === id);
-  const vehicleReminders = reminders.filter(reminder => reminder.vehicleId === id);
-  
-  // Handle if vehicle not found
+  // Handle if vehicle not found or loading
+  if (isLoading) {
+    return (
+      <SafeArea style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text style={styles.loadingText}>Loading vehicle details...</Text>
+      </SafeArea>
+    );
+  }
+
   if (!vehicle) {
     return (
       <SafeArea style={styles.notFoundContainer}>
@@ -76,7 +157,7 @@ export default function VehicleDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Image 
-          source={{ uri: vehicle.image }} 
+          source={{ uri: vehicle.vehicle_image_url || 'https://via.placeholder.com/400x200?text=Vehicle' }} 
           style={styles.headerImage}
           resizeMode="cover"
         />
@@ -92,7 +173,7 @@ export default function VehicleDetailScreen() {
           
           <View style={styles.headerInfo}>
             <Text style={styles.vehicleName}>{vehicle.year} {vehicle.make} {vehicle.model}</Text>
-            <Text style={styles.licensePlate}>{vehicle.licensePlate}</Text>
+            <Text style={styles.licensePlate}>{vehicle.license_plate}</Text>
           </View>
           
           <TouchableOpacity 
@@ -108,7 +189,7 @@ export default function VehicleDetailScreen() {
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
           <Ionicons name="speedometer-outline" size={24} color="#3B82F6" />
-          <Text style={styles.statValue}>{vehicle.mileage.toLocaleString()}</Text>
+          <Text style={styles.statValue}>{vehicle.current_mileage ? vehicle.current_mileage.toLocaleString() : 'N/A'}</Text>
           <Text style={styles.statLabel}>Kilometers</Text>
         </View>
         
@@ -117,11 +198,12 @@ export default function VehicleDetailScreen() {
         <View style={styles.statItem}>
           <Ionicons name="calendar-outline" size={24} color="#3B82F6" />
           <Text style={styles.statValue}>
-            {new Date(vehicle.purchaseDate).toLocaleDateString('en-US', { 
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric'
-            })}
+            {vehicle.purchase_date ? 
+              new Date(vehicle.purchase_date).toLocaleDateString('en-US', { 
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              }) : 'N/A'}
           </Text>
           <Text style={styles.statLabel}>Purchased</Text>
         </View>
@@ -130,7 +212,7 @@ export default function VehicleDetailScreen() {
         
         <View style={styles.statItem}>
           <Ionicons name="water-outline" size={24} color="#3B82F6" />
-          <Text style={styles.statValue}>{vehicle.fuelType}</Text>
+          <Text style={styles.statValue}>{vehicle.fuel_type || 'N/A'}</Text>
           <Text style={styles.statLabel}>Fuel Type</Text>
         </View>
       </View>
@@ -208,16 +290,31 @@ export default function VehicleDetailScreen() {
       <View style={styles.contentContainer}>
         {activeTab === 'maintenance' && (
           <>
-            {vehicleMaintenanceLogs.length > 0 ? (
+            {isLoadingLogs ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#3B82F6" />
+                <Text style={styles.loadingText}>Loading maintenance logs...</Text>
+              </View>
+            ) : maintenanceLogs.length > 0 ? (
               <ScrollView 
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {vehicleMaintenanceLogs.map(log => (
+                {maintenanceLogs.map((log: MaintenanceLog) => (
                   <MaintenanceLogItem 
-                    key={log.id} 
-                    log={log} 
-                    onPress={() => handleEditLog(log.id)} 
+                    key={log.maintenance_id} 
+                    log={{
+                      id: log.maintenance_id.toString(),
+                      vehicleId: log.vehicle_id.toString(),
+                      type: log.type,
+                      description: log.description,
+                      date: log.date,
+                      mileage: log.mileage,
+                      cost: log.cost,
+                      location: log.location || '',
+                      notes: log.notes || ''
+                    }} 
+                    onPress={() => handleEditLog(log.maintenance_id.toString())} 
                   />
                 ))}
               </ScrollView>
@@ -233,16 +330,31 @@ export default function VehicleDetailScreen() {
         
         {activeTab === 'fuel' && (
           <>
-            {vehicleFuelLogs.length > 0 ? (
+            {isLoadingLogs ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#3B82F6" />
+                <Text style={styles.loadingText}>Loading fuel logs...</Text>
+              </View>
+            ) : fuelLogs.length > 0 ? (
               <ScrollView 
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {vehicleFuelLogs.map(log => (
+                {fuelLogs.map((log: FuelLog) => (
                   <FuelLogItem 
-                    key={log.id} 
-                    log={log} 
-                    onPress={() => handleEditLog(log.id)} 
+                    key={log.fuel_id} 
+                    log={{
+                      id: log.fuel_id.toString(),
+                      vehicleId: log.vehicle_id.toString(),
+                      date: log.date,
+                      mileage: log.mileage,
+                      liters: log.fuel_amount,
+                      cost: log.cost,
+                      location: log.location || '',
+                      notes: log.notes || '',
+                      isFull: true // Backend doesn't have this field yet
+                    }} 
+                    onPress={() => handleEditLog(log.fuel_id.toString())} 
                   />
                 ))}
               </ScrollView>
@@ -258,27 +370,38 @@ export default function VehicleDetailScreen() {
         
         {activeTab === 'reminders' && (
           <>
-            {vehicleReminders.length > 0 ? (
-              <ScrollView 
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {vehicleReminders.map(reminder => (
-                  <ReminderItem 
-                    key={reminder.id} 
-                    reminder={reminder} 
-                    onPress={() => handleEditLog(reminder.id)}
-                    onToggleComplete={() => handleToggleReminder(reminder.id)}
-                  />
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="notifications-outline" size={64} color="#D1D5DB" />
-                <Text style={styles.emptyTitle}>No reminders yet</Text>
-                <Text style={styles.emptySubtitle}>Add your first reminder</Text>
+            {isLoadingLogs || isLoadingReminders ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#3B82F6" />
+                <Text style={styles.loadingText}>Loading reminders...</Text>
               </View>
-            )}
+            ) : (() => {
+              // Filter reminders for this vehicle (when API is updated with vehicle_id)
+              // For now, show all reminders since the API doesn't have vehicle_id field
+              const vehicleReminders = reminders.map(transformReminder);
+              
+              return vehicleReminders.length > 0 ? (
+                <ScrollView 
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {vehicleReminders.map((reminder: UIReminder) => (
+                    <ReminderItem 
+                      key={reminder.id} 
+                      reminder={reminder}
+                      onPress={() => handleEditLog(reminder.id)} 
+                      onToggleComplete={() => handleToggleReminder(reminder.id)}
+                    />
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="notifications-outline" size={64} color="#D1D5DB" />
+                  <Text style={styles.emptyTitle}>No reminders yet</Text>
+                  <Text style={styles.emptySubtitle}>Add your first reminder for this vehicle</Text>
+                </View>
+              );
+            })()}
           </>
         )}
       </View>
@@ -449,6 +572,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 8,
   },
   emptyTitle: {
     fontSize: 18,

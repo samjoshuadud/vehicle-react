@@ -1,3 +1,4 @@
+import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -16,6 +17,9 @@ export default function SignupScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const { statusBarStyle, backgroundColor } = useTheme();
+  const { register: registerUser } = useAuth();
+  const { register } = useAuth();
+  
   const handleSignup = async () => {
     // Validate inputs
     if (!name || !email || !password || !confirmPassword) {
@@ -37,14 +41,10 @@ export default function SignupScreen() {
 
     setIsLoading(true);
     try {
-      // Simulate registration delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // In a real app, this is where you'd make an API call to register the user
-      // For now, we'll just simulate success and navigate to the main app
+      await registerUser(email, password, name);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Registration Failed', 'Something went wrong. Please try again.');
+      Alert.alert('Registration Failed', error.message || 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }

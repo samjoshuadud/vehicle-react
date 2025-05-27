@@ -3,20 +3,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useTheme } from '@/context/ThemeContext';
-import { vehicles } from '@/data/dummyData';
+import { useVehicles } from '@/context/VehiclesContext';
+import { useReminders } from '@/context/RemindersContext';
 type RepeatInterval = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'mileage';
 
 export default function AddReminderScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
   const { statusBarStyle, backgroundColor } = useTheme();
+  const { vehicles } = useVehicles();
+  const { createReminder } = useReminders();
   
   // Find the vehicle based on the ID
-  const vehicle = vehicles.find(v => v.id === vehicleId);
+  const vehicle = vehicles.find(v => v.vehicle_id.toString() === vehicleId);
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -40,27 +43,45 @@ export default function AddReminderScreen() {
     );
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate form fields
     if (!title || !description || !date) {
-      // Show error message (in a real app)
-      console.log('Please fill in all required fields');
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      Alert.alert('Error', 'Please enter date in YYYY-MM-DD format');
       return;
     }
 
     // Validate mileage interval if repeat interval is mileage
     if (repeatInterval === 'mileage' && !mileageInterval) {
-      console.log('Please enter a mileage interval');
+      Alert.alert('Error', 'Please enter a mileage interval');
       return;
     }
 
-    // Simulate saving to backend
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      await createReminder({
+        user_id: 1, // This should be from auth context
+        title,
+        description,
+        due_date: date,
+        repeat_interval: repeatInterval === 'none' ? undefined : repeatInterval,
+      });
+      
+      Alert.alert('Success', 'Reminder created successfully', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error) {
+      console.error('Error creating reminder:', error);
+      Alert.alert('Error', 'Failed to create reminder. Please try again.');
+    } finally {
       setIsLoading(false);
-      // Navigate back to vehicle detail after successful save
-      router.back();
-    }, 1000);
+    }
   };
 
   const handleSelectRepeatInterval = (interval: RepeatInterval) => {

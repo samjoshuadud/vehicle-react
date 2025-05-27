@@ -2,13 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
+import { useVehicles } from '@/context/VehiclesContext';
 
 export default function AddVehicleScreen() {
   const [make, setMake] = useState('');
@@ -49,21 +50,67 @@ export default function AddVehicleScreen() {
     }
   };
 
-  const handleSave = () => {
+  const { addVehicle } = useVehicles();
+
+  const handleSave = async () => {
     // Validate form fields
     if (!make || !model || !year || !licensePlate) {
-      // Show error message (in a real app)
-      console.log('Please fill in all required fields');
+      Alert.alert('Error', 'Please fill in all required fields (Make, Model, Year, License Plate)');
       return;
     }
 
-    // Simulate saving to backend
+    // Validate year is a valid number
+    const yearNum = parseInt(year);
+    if (isNaN(yearNum) || yearNum < 1900 || yearNum > new Date().getFullYear() + 1) {
+      Alert.alert('Error', 'Please enter a valid year');
+      return;
+    }
+
+    // Validate mileage if provided
+    if (mileage && (isNaN(parseInt(mileage)) || parseInt(mileage) < 0)) {
+      Alert.alert('Error', 'Please enter a valid mileage');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      // Create vehicle data object
+      const vehicleData: any = {
+        make: make.trim(),
+        model: model.trim(),
+        year: yearNum,
+        license_plate: licensePlate.trim().toUpperCase(),
+      };
+
+      // Add optional fields if they have values
+      if (color.trim()) vehicleData.color = color.trim();
+      if (vin.trim()) vehicleData.vin = vin.trim();
+      if (mileage) vehicleData.current_mileage = parseInt(mileage);
+      if (fuelType.trim()) vehicleData.fuel_type = fuelType.trim();
+      if (purchaseDate.trim()) vehicleData.purchase_date = purchaseDate.trim();
+      if (imageUrl.trim()) vehicleData.image_url = imageUrl.trim();
+
+      await addVehicle(vehicleData);
+      
+      Alert.alert(
+        'Success', 
+        'Vehicle added successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.back()
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('Error adding vehicle:', error);
+      Alert.alert(
+        'Error', 
+        error?.message || 'Failed to add vehicle. Please try again.'
+      );
+    } finally {
       setIsLoading(false);
-      // Navigate back to dashboard after successful save
-      router.back();
-    }, 1000);
+    }
   };
 
   return (

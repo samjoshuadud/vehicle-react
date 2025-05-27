@@ -1,18 +1,22 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiService, User as ApiUser } from '../services/api';
 
 interface User {
-  id: string;
+  user_id: number;
   email: string;
-  name: string;
+  full_name: string;
+  mileage_type: string;
+  dark_mode: boolean;
 }
 
 interface AuthContextProps {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
+  register: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -28,6 +32,7 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -37,8 +42,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadUser = async () => {
     try {
       const userData = await AsyncStorage.getItem('user');
-      if (userData) {
+      const tokenData = await AsyncStorage.getItem('token');
+      if (userData && tokenData) {
         setUser(JSON.parse(userData));
+        setToken(tokenData);
       }
     } catch (error) {
       console.error('Error loading user:', error);
@@ -49,38 +56,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      // TODO: Replace with your actual authentication logic
-      const mockUser = {
-        id: '1',
-        email,
-        name: 'User',
-      };
-      await AsyncStorage.setItem('user', JSON.stringify(mockUser));
-      setUser(mockUser);
+      console.log('AuthContext: Starting login process');
+      const loginResponse = await apiService.login(email, password);
+      console.log('AuthContext: Login successful, fetching profile');
+      const userProfile = await apiService.getUserProfile(loginResponse.access_token);
+      
+      await AsyncStorage.setItem('token', loginResponse.access_token);
+      await AsyncStorage.setItem('user', JSON.stringify(userProfile));
+      
+      setToken(loginResponse.access_token);
+      setUser(userProfile);
+      console.log('AuthContext: Login complete');
     } catch (error) {
-      throw new Error('Login failed');
+      console.error('AuthContext: Login failed', error);
+      throw error;
     }
   };
 
-  const register = async (email: string, password: string, name?: string) => {
+  const register = async (email: string, password: string, fullName: string) => {
     try {
-      // TODO: Replace with your actual registration logic
-      const mockUser = {
-        id: '1',
+      console.log('AuthContext: Starting registration process');
+      const newUser = await apiService.register({
+        full_name: fullName,
         email,
-        name: name || 'User',
-      };
-      await AsyncStorage.setItem('user', JSON.stringify(mockUser));
-      setUser(mockUser);
+        password,
+        mileage_type: 'kilometers',
+        dark_mode: false,
+      });
+
+      console.log('AuthContext: Registration successful, logging in');
+      // After successful registration, log the user in
+      await login(email, password);
     } catch (error) {
-      throw new Error('Registration failed');
+      console.error('AuthContext: Registration failed', error);
+      throw error;
     }
   };
 
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('token');
       setUser(null);
+      setToken(null);
     } catch (error) {
       throw new Error('Logout failed');
     }
@@ -88,8 +106,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value = {
     user,
+    token,
     isLoading,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!token,
     login,
     register,
     logout,

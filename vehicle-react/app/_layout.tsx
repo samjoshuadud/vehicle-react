@@ -10,6 +10,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { VehiclesProvider } from '@/context/VehiclesContext';
+import { RemindersProvider } from '@/context/RemindersContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 // Auth-aware layout component
@@ -88,9 +90,13 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <SafeAreaProvider>
-          <AuthAwareLayout />
-        </SafeAreaProvider>
+        <VehiclesProvider>
+          <RemindersProvider>
+            <SafeAreaProvider>
+              <AuthAwareLayout />
+            </SafeAreaProvider>
+          </RemindersProvider>
+        </VehiclesProvider>
       </AuthProvider>
     </ThemeProvider>
   );

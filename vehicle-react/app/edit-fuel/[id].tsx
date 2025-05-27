@@ -2,47 +2,70 @@ import { SafeArea } from '@/components/ui/SafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useTheme } from '@/context/ThemeContext';
-import { vehicles, fuelLogs } from '@/data/dummyData';
+import { useAuth } from '@/context/AuthContext';
+import { apiService, FuelLog } from '@/services/api';
 
 export default function EditFuelLogScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { statusBarStyle, backgroundColor, currencySymbol } = useTheme();
+  const { token } = useAuth();
   
-  // Find the log and associated vehicle
-  const log = fuelLogs.find(l => l.id === id);
-  const vehicle = log ? vehicles.find(v => v.id === log.vehicleId) : null;
-  
+  const [fuel, setFuel] = useState<FuelLog | null>(null);
   const [date, setDate] = useState('');
   const [liters, setLiters] = useState('');
   const [cost, setCost] = useState('');
   const [mileage, setMileage] = useState('');
   const [location, setLocation] = useState('');
-  const [isFull, setIsFull] = useState(true);
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
-    if (log) {
-      setDate(log.date);
-      setLiters(log.liters.toString());
-      setCost(log.cost.toString());
-      setMileage(log.mileage.toString());
-      setLocation(log.location || '');
-      setIsFull(log.isFull);
-      setNotes(log.notes || '');
-    }
-  }, [log]);
+    const loadFuelLog = async () => {
+      if (!id || !token) return;
 
-  // Handle if log not found
-  if (!log || !vehicle) {
+      try {
+        const fuelData = await apiService.getFuelById(token, parseInt(id));
+        setFuel(fuelData);
+        setDate(fuelData.date);
+        setLiters(fuelData.fuel_amount.toString());
+        setCost(fuelData.cost.toString());
+        setMileage(fuelData.mileage.toString());
+        setLocation(fuelData.location || '');
+        setNotes(fuelData.notes || '');
+      } catch (error: any) {
+        console.error('Failed to load fuel log:', error);
+        Alert.alert('Error', 'Failed to load fuel log');
+        router.back();
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    loadFuelLog();
+  }, [id, token]);
+
+  if (isLoadingData) {
     return (
-      <SafeArea style={styles.notFoundContainer}>
+      <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+        <StatusBar style={statusBarStyle} />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading fuel log...</Text>
+        </View>
+      </SafeArea>
+    );
+  }
+
+  if (!fuel) {
+    return (
+      <SafeArea style={styles.notFoundContainer} statusBarColor={backgroundColor}>
+        <StatusBar style={statusBarStyle} />
         <Text style={styles.notFoundText}>Fuel log not found</Text>
         <TouchableOpacity 
           style={styles.backButton}
@@ -54,38 +77,70 @@ export default function EditFuelLogScreen() {
     );
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate form fields
     if (!date || !cost || !mileage) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
 
-    // Validate numeric fields
-    if (vehicle.fuelType !== 'Electric') {
-      if (isNaN(parseFloat(liters)) || parseFloat(liters) <= 0) {
-        Alert.alert('Invalid Amount', 'Please enter a valid fuel amount in liters');
-        return;
-      }
-    }
-
-    if (isNaN(parseFloat(cost)) || parseFloat(cost) <= 0) {
-      Alert.alert('Invalid Cost', 'Please enter a valid cost value');
+    // Validate date format (basic validation)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      Alert.alert('Invalid Date', 'Please enter date in YYYY-MM-DD format');
       return;
     }
 
-    if (isNaN(parseInt(mileage, 10))) {
+    // Validate mileage format
+    const mileageNum = parseInt(mileage, 10);
+    if (isNaN(mileageNum) || mileageNum < 0) {
       Alert.alert('Invalid Mileage', 'Please enter a valid mileage value');
       return;
     }
 
-    // Simulate saving to backend
+    // Validate cost format
+    const costNum = parseFloat(cost);
+    if (isNaN(costNum) || costNum < 0) {
+      Alert.alert('Invalid Cost', 'Please enter a valid cost amount');
+      return;
+    }
+
+    // Validate fuel amount if provided
+    let fuelAmount = 0;
+    if (liters) {
+      fuelAmount = parseFloat(liters);
+      if (isNaN(fuelAmount) || fuelAmount <= 0) {
+        Alert.alert('Invalid Fuel Amount', 'Please enter a valid fuel amount');
+        return;
+      }
+    }
+
+    if (!token) {
+      Alert.alert('Error', 'Authentication token not found');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const updatedData: Partial<FuelLog> = {
+        date,
+        mileage: mileageNum,
+        fuel_amount: fuelAmount,
+        cost: costNum,
+        location: location || undefined,
+        notes: notes || undefined,
+      };
+
+      await apiService.updateFuelLog(token, fuel.fuel_id, updatedData);
+      Alert.alert('Success', 'Fuel log updated successfully', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
+      console.error('Failed to update fuel log:', error);
+      Alert.alert('Error', error.message || 'Failed to update fuel log');
+    } finally {
       setIsLoading(false);
-      // Navigate back to vehicle detail after successful save
-      router.back();
-    }, 1000);
+    }
   };
 
   const handleDelete = () => {
@@ -97,39 +152,49 @@ export default function EditFuelLogScreen() {
         { 
           text: 'Delete', 
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            if (!token) {
+              Alert.alert('Error', 'Authentication token not found');
+              return;
+            }
+
             setIsLoading(true);
-            setTimeout(() => {
+            try {
+              await apiService.deleteFuelLog(token, fuel.fuel_id);
+              Alert.alert('Success', 'Fuel log deleted successfully', [
+                { text: 'OK', onPress: () => router.back() }
+              ]);
+            } catch (error: any) {
+              console.error('Failed to delete fuel log:', error);
+              Alert.alert('Error', error.message || 'Failed to delete fuel log');
+            } finally {
               setIsLoading(false);
-              router.back();
-            }, 1000);
+            }
           }
         }
       ]
     );
   };
 
-  // Calculate fuel economy if possible
-  const calculateFuelEconomy = () => {
-    // In a real app, this would look at previous fuel logs to calculate km/Liters
-    return vehicle.fuelType === 'Electric' ? 'N/A' : '10.7 km/Liters';
-  };
-
-  const isElectric = vehicle.fuelType === 'Electric';
+  // Determine if this is an electric vehicle
+  const isElectric = fuel?.fuel_type === 'Electric';
 
   return (
     <SafeArea style={styles.container} statusBarColor={backgroundColor}>
       <StatusBar style={statusBarStyle} />
-      
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+        style={styles.keyboardAvoidingView}
       >
         <View style={styles.header}>
-          <Text style={styles.heading}>Edit {isElectric ? 'Charging' : 'Fuel'} Log</Text>
-          <Text style={styles.vehicleName}>
-            {vehicle.year} {vehicle.make} {vehicle.model}
-          </Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="chevron-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{isElectric ? 'Edit Charging Log' : 'Edit Fuel Log'}</Text>
+          <View style={styles.headerRight} />
         </View>
 
         <ScrollView
@@ -144,14 +209,23 @@ export default function EditFuelLogScreen() {
             leftIcon={<Ionicons name="calendar-outline" size={20} color="#6B7280" />}
           />
           
-          {!isElectric && (
+          {!isElectric ? (
             <Input
-              label="Liters *"
+              label="Liters"
               placeholder="Amount of fuel"
               value={liters}
               onChangeText={setLiters}
               keyboardType="decimal-pad"
               leftIcon={<Ionicons name="water-outline" size={20} color="#6B7280" />}
+            />
+          ) : (
+            <Input
+              label="kWh"
+              placeholder="Amount of electricity"
+              value={liters}
+              onChangeText={setLiters}
+              keyboardType="decimal-pad"
+              leftIcon={<Ionicons name="flash-outline" size={20} color="#6B7280" />}
             />
           )}
           
@@ -174,39 +248,22 @@ export default function EditFuelLogScreen() {
           />
           
           <Input
-            label="Location"
-            placeholder="Where you filled up"
+            label="Location *"
+            placeholder={isElectric ? "Where you charged" : "Where you filled up"}
             value={location}
             onChangeText={setLocation}
             leftIcon={<Ionicons name="location-outline" size={20} color="#6B7280" />}
           />
           
-          <View style={styles.switchContainer}>
-            <View style={styles.switchLabelContainer}>
-              <Ionicons name="water-outline" size={20} color="#6B7280" />
-              <Text style={styles.switchLabel}>Filled tank completely</Text>
-            </View>
-            <Switch
-              value={isFull}
-              onValueChange={setIsFull}
-              trackColor={{ false: '#D1D5DB', true: '#BFDBFE' }}
-              thumbColor={isFull ? '#3B82F6' : '#9CA3AF'}
-            />
-          </View>
-          
           <Input
             label="Notes"
-            placeholder="Additional notes"
+            placeholder="Additional notes or details"
             value={notes}
             onChangeText={setNotes}
             multiline
+            numberOfLines={4}
             leftIcon={<Ionicons name="create-outline" size={20} color="#6B7280" />}
           />
-          
-          <View style={styles.fuelEconomyContainer}>
-            <Text style={styles.fuelEconomyLabel}>Estimated Fuel Economy:</Text>
-            <Text style={styles.fuelEconomyValue}>{calculateFuelEconomy()}</Text>
-          </View>
           
           <View style={styles.buttonContainer}>
             <Button
@@ -222,7 +279,7 @@ export default function EditFuelLogScreen() {
             onPress={handleDelete}
           >
             <Ionicons name="trash-outline" size={20} color="#EF4444" />
-            <Text style={styles.deleteButtonText}>Delete Fuel Log</Text>
+            <Text style={styles.deleteButtonText}>{isElectric ? 'Delete Charging Log' : 'Delete Fuel Log'}</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -234,6 +291,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 16,
   },
   notFoundContainer: {
     flex: 1,
@@ -248,11 +316,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   backButtonText: {
     color: '#3B82F6',
@@ -272,63 +336,20 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  heading: {
+  headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
   },
-  vehicleName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginLeft: 8,
+  headerRight: {
+    width: 40,
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 32,
   },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  switchLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  switchLabel: {
-    fontSize: 16,
-    color: '#4B5563',
-    marginLeft: 12,
-  },
-  fuelEconomyContainer: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  fuelEconomyLabel: {
-    fontSize: 16,
-    color: '#4B5563',
-  },
-  fuelEconomyValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#3B82F6',
-  },
   buttonContainer: {
+    marginTop: 24,
     marginBottom: 16,
   },
   deleteButton: {

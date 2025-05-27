@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, Image, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Vehicle } from '../data/dummyData';
+import { Vehicle } from '../services/api';
 
 interface VehicleCardProps {
   vehicle: Vehicle;
@@ -9,6 +9,8 @@ interface VehicleCardProps {
 }
 
 const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onPress }) => {
+  const defaultImage = 'https://via.placeholder.com/300x200/E5E7EB/6B7280?text=Vehicle';
+  
   return (
     <TouchableOpacity 
       style={styles.card} 
@@ -16,7 +18,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onPress }) => {
       activeOpacity={0.7}
     >
       <Image 
-        source={{ uri: vehicle.image }} 
+        source={{ uri: vehicle.vehicle_image_url || defaultImage }} 
         style={styles.image}
         resizeMode="cover"
       />
@@ -24,30 +26,34 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onPress }) => {
         <View style={styles.header}>
           <Text style={styles.title}>{vehicle.year} {vehicle.make} {vehicle.model}</Text>
           <View style={styles.badgeContainer}>
-            <Text style={styles.badge}>{vehicle.fuelType}</Text>
+            <Text style={styles.badge}>{vehicle.fuel_type || 'Gasoline'}</Text>
           </View>
         </View>
         
         <View style={styles.detailsContainer}>
           <View style={styles.detailItem}>
             <Ionicons name="speedometer-outline" size={16} color="#4B5563" />
-            <Text style={styles.detailText}>{vehicle.mileage.toLocaleString()} km</Text>
+            <Text style={styles.detailText}>{vehicle.current_mileage.toLocaleString()} km</Text>
           </View>
           
-          <View style={styles.detailItem}>
-            <Ionicons name="calendar-outline" size={16} color="#4B5563" />
-            <Text style={styles.detailText}>
-              Since {new Date(vehicle.purchaseDate).toLocaleDateString('en-US', { 
-                month: 'short', 
-                year: 'numeric' 
-              })}
-            </Text>
-          </View>
+          {vehicle.purchase_date && (
+            <View style={styles.detailItem}>
+              <Ionicons name="calendar-outline" size={16} color="#4B5563" />
+              <Text style={styles.detailText}>
+                Since {new Date(vehicle.purchase_date).toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  year: 'numeric' 
+                })}
+              </Text>
+            </View>
+          )}
           
-          <View style={styles.detailItem}>
-            <Ionicons name="car-outline" size={16} color="#4B5563" />
-            <Text style={styles.detailText}>{vehicle.licensePlate}</Text>
-          </View>
+          {vehicle.license_plate && (
+            <View style={styles.detailItem}>
+              <Ionicons name="car-outline" size={16} color="#4B5563" />
+              <Text style={styles.detailText}>{vehicle.license_plate}</Text>
+            </View>
+          )}
         </View>
       </View>
       <View style={styles.arrowContainer}>

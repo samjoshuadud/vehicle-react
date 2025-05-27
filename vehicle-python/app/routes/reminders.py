@@ -5,7 +5,7 @@ from ..models import models
 from ..schemas import schemas
 from ..utils.auth import get_current_active_user
 from typing import List
-from datetime import date
+from datetime import date, timedelta
 
 router = APIRouter(
     prefix="/reminders",
@@ -43,10 +43,11 @@ async def read_upcoming_reminders(
     db: Session = Depends(get_db)
 ):
     today = date.today()
+    future_date = today + timedelta(days=days)
     reminders = db.query(models.Reminder).filter(
         models.Reminder.user_id == current_user.user_id,
         models.Reminder.due_date >= today,
-        models.Reminder.due_date <= today.add(days=days)
+        models.Reminder.due_date <= future_date
     ).order_by(models.Reminder.due_date).all()
     return reminders
 

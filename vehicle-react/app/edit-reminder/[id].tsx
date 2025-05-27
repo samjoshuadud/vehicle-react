@@ -1,81 +1,95 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
-import { reminders, vehicles } from '@/data/dummyData';
+import { useVehicles } from '@/context/VehiclesContext';
+import { useReminders } from '@/context/RemindersContext';
+import { Reminder } from '@/services/api';
+
 type RepeatInterval = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'mileage';
 
 export default function EditReminderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { statusBarStyle, backgroundColor } = useTheme();
+  const { vehicles } = useVehicles();
+  const { getReminderById, updateReminder, deleteReminder } = useReminders();
   
-  // Find the reminder based on the ID
-  const reminder = reminders.find(r => r.id === id);
-  
-  // Find the vehicle based on the vehicle ID in the reminder
-  const vehicle = reminder ? vehicles.find(v => v.id === reminder.vehicleId) : null;
-  
+  const [reminder, setReminder] = useState<Reminder | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
   const [repeatInterval, setRepeatInterval] = useState<RepeatInterval>('none');
   const [mileageInterval, setMileageInterval] = useState('');
-  const [isCompleted, setIsCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
+  // Load reminder data on mount
   useEffect(() => {
-    if (reminder) {
-      setTitle(reminder.title);
-      setDescription(reminder.description);
-      setDate(reminder.date);
-      setRepeatInterval(reminder.repeatInterval as RepeatInterval || 'none');
-      setMileageInterval(reminder.mileageInterval ? reminder.mileageInterval.toString() : '');
-      setIsCompleted(reminder.isCompleted);
-    }
-  }, [reminder]);
+    const loadReminder = async () => {
+      if (!id) return;
+      
+      try {
+        setIsInitialLoading(true);
+        const reminderData = await getReminderById(parseInt(id));
+        setReminder(reminderData);
+        setTitle(reminderData.title);
+        setDescription(reminderData.description || '');
+        setDate(reminderData.due_date);
+        setRepeatInterval((reminderData.repeat_interval as RepeatInterval) || 'none');
+      } catch (error) {
+        console.error('Error loading reminder:', error);
+        Alert.alert('Error', 'Failed to load reminder data', [
+          { text: 'OK', onPress: () => router.back() }
+        ]);
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
 
-  // Handle if reminder not found
-  if (!reminder || !vehicle) {
-    return (
-      <SafeArea style={styles.notFoundContainer} statusBarColor={backgroundColor}>
-        <StatusBar style={statusBarStyle} />
-        <Text style={styles.notFoundText}>Reminder not found</Text>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </TouchableOpacity>
-      </SafeArea>
-    );
-  }
+    loadReminder();
+  }, [id, getReminderById]);
 
-  const handleSave = () => {
-    // Validate form fields
+  const handleSave = async () => {
     if (!title || !description || !date) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
 
-    // Validate mileage interval if repeat interval is mileage
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      Alert.alert('Error', 'Please enter date in YYYY-MM-DD format');
+      return;
+    }
+
     if (repeatInterval === 'mileage' && !mileageInterval) {
       Alert.alert('Missing Information', 'Please enter a mileage interval');
       return;
     }
 
-    // Simulate saving to backend
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      await updateReminder(parseInt(id!), {
+        title,
+        description,
+        due_date: date,
+        repeat_interval: repeatInterval === 'none' ? undefined : repeatInterval,
+      });
+      
+      Alert.alert('Success', 'Reminder updated successfully', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error) {
+      console.error('Error updating reminder:', error);
+      Alert.alert('Error', 'Failed to update reminder. Please try again.');
+    } finally {
       setIsLoading(false);
-      // Navigate back to vehicle detail after successful save
-      router.back();
-    }, 1000);
+    }
   };
 
   const handleDelete = () => {
@@ -87,23 +101,59 @@ export default function EditReminderScreen() {
         { 
           text: 'Delete', 
           style: 'destructive',
-          onPress: () => {
-            // Simulate deleting from backend
+          onPress: async () => {
             setIsLoading(true);
-            setTimeout(() => {
+            try {
+              await deleteReminder(parseInt(id!));
+              Alert.alert('Success', 'Reminder deleted successfully', [
+                { text: 'OK', onPress: () => router.back() }
+              ]);
+            } catch (error) {
+              console.error('Error deleting reminder:', error);
+              Alert.alert('Error', 'Failed to delete reminder. Please try again.');
+            } finally {
               setIsLoading(false);
-              // Navigate back to vehicle detail after successful delete
-              router.back();
-            }, 1000);
+            }
           }
         }
       ]
     );
   };
 
-  const handleSelectRepeatInterval = (interval: RepeatInterval) => {
-    setRepeatInterval(interval);
-  };
+  const placeholderVehicle = vehicles.length > 0 ? vehicles[0] : null;
+
+  // Show loading state while fetching reminder data
+  if (isInitialLoading) {
+    return (
+      <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+        <StatusBar style={statusBarStyle} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>Loading reminder...</Text>
+        </View>
+      </SafeArea>
+    );
+  }
+
+  // Show error if reminder data failed to load
+  if (!reminder) {
+    return (
+      <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+        <StatusBar style={statusBarStyle} />
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+          <Text style={styles.errorTitle}>Failed to load reminder</Text>
+          <Text style={styles.errorSubtitle}>Please try again later</Text>
+          <TouchableOpacity
+            style={styles.errorBackButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.errorBackButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeArea>
+    );
+  }
 
   return (
     <SafeArea style={styles.container} statusBarColor={backgroundColor}>
@@ -120,187 +170,100 @@ export default function EditReminderScreen() {
             <Ionicons name="chevron-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Reminder</Text>
-          <View style={styles.headerRight} />
-        </View>
-
-        <View style={styles.vehicleInfo}>
-          <Ionicons name="car" size={20} color="#3B82F6" />
-          <Text style={styles.vehicleName}>
-            {vehicle.year} {vehicle.make} {vehicle.model}
-          </Text>
-        </View>
-
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.completedContainer}>
-            <TouchableOpacity 
-              style={styles.checkboxContainer}
-              onPress={() => setIsCompleted(!isCompleted)}
-            >
-              <View style={[
-                styles.checkbox,
-                isCompleted && styles.checkboxCompleted
-              ]}>
-                {isCompleted && (
-                  <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                )}
-              </View>
-              <Text style={styles.completedLabel}>
-                Mark as completed
-              </Text>
-            </TouchableOpacity>
-          </View>
-          
-          <Input
-            label="Title *"
-            placeholder="e.g. Oil Change, Registration Renewal"
-            value={title}
-            onChangeText={setTitle}
-            leftIcon={<Ionicons name="notifications-outline" size={20} color="#6B7280" />}
-          />
-          
-          <Input
-            label="Description *"
-            placeholder="Details about the reminder"
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            leftIcon={<Ionicons name="document-text-outline" size={20} color="#6B7280" />}
-          />
-          
-          <Input
-            label="Due Date *"
-            placeholder="YYYY-MM-DD"
-            value={date}
-            onChangeText={setDate}
-            leftIcon={<Ionicons name="calendar-outline" size={20} color="#6B7280" />}
-          />
-          
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Repeat Interval</Text>
-            
-            <View style={styles.repeatOptions}>
-              <TouchableOpacity
-                style={[
-                  styles.repeatOption,
-                  repeatInterval === 'none' && styles.repeatOptionSelected
-                ]}
-                onPress={() => handleSelectRepeatInterval('none')}
-              >
-                <Text style={[
-                  styles.repeatOptionText,
-                  repeatInterval === 'none' && styles.repeatOptionTextSelected
-                ]}>
-                  None
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.repeatOption,
-                  repeatInterval === 'daily' && styles.repeatOptionSelected
-                ]}
-                onPress={() => handleSelectRepeatInterval('daily')}
-              >
-                <Text style={[
-                  styles.repeatOptionText,
-                  repeatInterval === 'daily' && styles.repeatOptionTextSelected
-                ]}>
-                  Daily
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.repeatOption,
-                  repeatInterval === 'weekly' && styles.repeatOptionSelected
-                ]}
-                onPress={() => handleSelectRepeatInterval('weekly')}
-              >
-                <Text style={[
-                  styles.repeatOptionText,
-                  repeatInterval === 'weekly' && styles.repeatOptionTextSelected
-                ]}>
-                  Weekly
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.repeatOption,
-                  repeatInterval === 'monthly' && styles.repeatOptionSelected
-                ]}
-                onPress={() => handleSelectRepeatInterval('monthly')}
-              >
-                <Text style={[
-                  styles.repeatOptionText,
-                  repeatInterval === 'monthly' && styles.repeatOptionTextSelected
-                ]}>
-                  Monthly
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.repeatOption,
-                  repeatInterval === 'yearly' && styles.repeatOptionSelected
-                ]}
-                onPress={() => handleSelectRepeatInterval('yearly')}
-              >
-                <Text style={[
-                  styles.repeatOptionText,
-                  repeatInterval === 'yearly' && styles.repeatOptionTextSelected
-                ]}>
-                  Yearly
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.repeatOption,
-                  repeatInterval === 'mileage' && styles.repeatOptionSelected
-                ]}
-                onPress={() => handleSelectRepeatInterval('mileage')}
-              >
-                <Text style={[
-                  styles.repeatOptionText,
-                  repeatInterval === 'mileage' && styles.repeatOptionTextSelected
-                ]}>
-                  Mileage
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          
-          {repeatInterval === 'mileage' && (
-            <Input
-              label="Mileage Interval *"
-              placeholder="e.g. 5000"
-              value={mileageInterval}
-              onChangeText={setMileageInterval}
-              keyboardType="number-pad"
-              leftIcon={<Ionicons name="speedometer-outline" size={20} color="#6B7280" />}
-            />
-          )}
-          
-          <View style={styles.buttonContainer}>
-            <Button
-              title="Save Changes"
-              onPress={handleSave}
-              loading={isLoading}
-              fullWidth
-            />
-          </View>
-          
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={handleDelete}
           >
             <Ionicons name="trash-outline" size={20} color="#EF4444" />
-            <Text style={styles.deleteButtonText}>Delete Reminder</Text>
           </TouchableOpacity>
+        </View>
+
+        {placeholderVehicle && (
+          <View style={styles.vehicleInfo}>
+            <Ionicons name="car" size={20} color="#3B82F6" />
+            <Text style={styles.vehicleName}>
+              {placeholderVehicle.year} {placeholderVehicle.make} {placeholderVehicle.model}
+            </Text>
+          </View>
+        )}
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Input
+            label="Title *"
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Enter reminder title"
+          />
+
+          <Input
+            label="Description"
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Enter description (optional)"
+            multiline
+            numberOfLines={3}
+          />
+
+          <Input
+            label="Due Date *"
+            value={date}
+            onChangeText={setDate}
+            placeholder="YYYY-MM-DD"
+          />
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Repeat Interval</Text>
+            <View style={styles.repeatOptions}>
+              {(['none', 'daily', 'weekly', 'monthly', 'yearly', 'mileage'] as RepeatInterval[]).map((interval) => (
+                <TouchableOpacity
+                  key={interval}
+                  style={[
+                    styles.repeatOption,
+                    repeatInterval === interval && styles.repeatOptionActive
+                  ]}
+                  onPress={() => setRepeatInterval(interval)}
+                >
+                  <Text
+                    style={[
+                      styles.repeatOptionText,
+                      repeatInterval === interval && styles.repeatOptionTextActive
+                    ]}
+                  >
+                    {interval === 'none' ? 'One-time' : interval.charAt(0).toUpperCase() + interval.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {repeatInterval === 'mileage' && (
+            <Input
+              label="Mileage Interval *"
+              value={mileageInterval}
+              onChangeText={setMileageInterval}
+              placeholder="Enter mileage interval"
+              keyboardType="numeric"
+            />
+          )}
+
+          <View style={styles.buttonContainer}>
+            <Button
+              title={isLoading ? "Saving..." : "Save Changes"}
+              onPress={handleSave}
+              disabled={isLoading}
+              variant="primary"
+            />
+            
+            <Button
+              title={isLoading ? "Deleting..." : "Delete Reminder"}
+              onPress={handleDelete}
+              disabled={isLoading}
+              variant="danger"
+            />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeArea>
@@ -311,30 +274,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-  },
-  notFoundContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  notFoundText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#4B5563',
-    marginBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backButtonText: {
-    color: '#3B82F6',
-    fontSize: 16,
-    fontWeight: '600',
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -349,19 +288,25 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
+  backButton: {
+    padding: 4,
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
   },
-  headerRight: {
-    width: 40,
+  deleteButton: {
+    padding: 4,
   },
   vehicleInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#EBF5FF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   vehicleName: {
     fontSize: 16,
@@ -373,90 +318,106 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
-  completedContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#3B82F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  checkboxCompleted: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
-  },
-  completedLabel: {
-    fontSize: 16,
-    color: '#4B5563',
-  },
-  sectionContainer: {
+  inputGroup: {
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 16,
+  label: {
+    fontSize: 14,
     fontWeight: '500',
-    color: '#4B5563',
-    marginBottom: 12,
+    color: '#374151',
+    marginBottom: 8,
   },
   repeatOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -4,
+    gap: 8,
   },
   repeatOption: {
-    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
     backgroundColor: '#F3F4F6',
-    marginHorizontal: 4,
-    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  repeatOptionSelected: {
+  repeatOptionActive: {
     backgroundColor: '#EBF5FF',
+    borderColor: '#3B82F6',
   },
   repeatOptionText: {
     fontSize: 14,
     color: '#6B7280',
   },
-  repeatOptionTextSelected: {
+  repeatOptionTextActive: {
     color: '#3B82F6',
     fontWeight: '500',
   },
-  buttonContainer: {
-    marginTop: 24,
-    marginBottom: 16,
-  },
-  deleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
+  completionSection: {
+    marginVertical: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEF2F2',
+    borderColor: '#E5E7EB',
   },
-  deleteButtonText: {
-    marginLeft: 8,
+  completionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  completionText: {
     fontSize: 16,
+    color: '#6B7280',
+    marginLeft: 12,
+  },
+  completionTextActive: {
+    color: '#10B981',
     fontWeight: '500',
+  },
+  buttonContainer: {
+    gap: 12,
+    marginTop: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#EF4444',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  errorBackButton: {
+    marginTop: 24,
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  errorBackButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

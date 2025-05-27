@@ -1,24 +1,22 @@
+import { SafeArea } from '@/components/ui/SafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
-import { maintenanceLogs, vehicles } from '@/data/dummyData';
+import { useAuth } from '@/context/AuthContext';
+import { apiService, MaintenanceLog } from '@/services/api';
 
 export default function EditMaintenanceLogScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { statusBarStyle, backgroundColor } = useTheme();
+  const { token } = useAuth();
   
-  // Find the maintenance log based on the ID
-  const log = maintenanceLogs.find(l => l.id === id);
-  
-  // Find the vehicle based on the vehicle ID in the log
-  const vehicle = log ? vehicles.find(v => v.id === log.vehicleId) : null;
-  
+  const [maintenance, setMaintenance] = useState<MaintenanceLog | null>(null);
   const [date, setDate] = useState('');
   const [type, setType] = useState('');
   const [description, setDescription] = useState('');
@@ -27,25 +25,49 @@ export default function EditMaintenanceLogScreen() {
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  const { statusBarStyle, backgroundColor } = useTheme();
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
-    if (log) {
-      setDate(log.date);
-      setType(log.type);
-      setDescription(log.description);
-      setMileage(log.mileage.toString());
-      setCost(log.cost.toString());
-      setLocation(log.location || '');
-      setNotes(log.notes || '');
-    }
-  }, [log]);
+    const loadMaintenanceLog = async () => {
+      if (!id || !token) return;
 
-  // Handle if log not found
-  if (!log || !vehicle) {
+      try {
+        const maintenanceData = await apiService.getMaintenanceById(token, parseInt(id));
+        setMaintenance(maintenanceData);
+        setDate(maintenanceData.date);
+        setType(maintenanceData.type);
+        setDescription(maintenanceData.description);
+        setMileage(maintenanceData.mileage.toString());
+        setCost(maintenanceData.cost.toString());
+        setLocation(maintenanceData.location || '');
+        setNotes(maintenanceData.notes || '');
+      } catch (error: any) {
+        console.error('Failed to load maintenance log:', error);
+        Alert.alert('Error', 'Failed to load maintenance log');
+        router.back();
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    loadMaintenanceLog();
+  }, [id, token]);
+
+  if (isLoadingData) {
     return (
-      <SafeArea style={styles.notFoundContainer}>
+      <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+        <StatusBar style={statusBarStyle} />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading maintenance log...</Text>
+        </View>
+      </SafeArea>
+    );
+  }
+
+  if (!maintenance) {
+    return (
+      <SafeArea style={styles.notFoundContainer} statusBarColor={backgroundColor}>
+        <StatusBar style={statusBarStyle} />
         <Text style={styles.notFoundText}>Maintenance log not found</Text>
         <TouchableOpacity 
           style={styles.backButton}
@@ -57,32 +79,61 @@ export default function EditMaintenanceLogScreen() {
     );
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate form fields
     if (!date || !type || !description || !mileage || !cost) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
 
+    // Validate date format (basic validation)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      Alert.alert('Invalid Date', 'Please enter date in YYYY-MM-DD format');
+      return;
+    }
+
     // Validate mileage format
-    if (isNaN(parseInt(mileage, 10))) {
+    const mileageNum = parseInt(mileage, 10);
+    if (isNaN(mileageNum) || mileageNum < 0) {
       Alert.alert('Invalid Mileage', 'Please enter a valid mileage value');
       return;
     }
 
     // Validate cost format
-    if (isNaN(parseFloat(cost))) {
-      Alert.alert('Invalid Cost', 'Please enter a valid cost value');
+    const costNum = parseFloat(cost);
+    if (isNaN(costNum) || costNum < 0) {
+      Alert.alert('Invalid Cost', 'Please enter a valid cost amount');
       return;
     }
 
-    // Simulate saving to backend
+    if (!token) {
+      Alert.alert('Error', 'Authentication token not found');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const updatedData: Partial<MaintenanceLog> = {
+        date,
+        type,
+        description,
+        mileage: mileageNum,
+        cost: costNum,
+        location: location || undefined,
+        notes: notes || undefined,
+      };
+
+      await apiService.updateMaintenanceLog(token, maintenance.maintenance_id, updatedData);
+      Alert.alert('Success', 'Maintenance log updated successfully', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
+      console.error('Failed to update maintenance log:', error);
+      Alert.alert('Error', error.message || 'Failed to update maintenance log');
+    } finally {
       setIsLoading(false);
-      // Navigate back to vehicle detail after successful save
-      router.back();
-    }, 1000);
+    }
   };
 
   const handleDelete = () => {
@@ -94,14 +145,24 @@ export default function EditMaintenanceLogScreen() {
         { 
           text: 'Delete', 
           style: 'destructive',
-          onPress: () => {
-            // Simulate deleting from backend
+          onPress: async () => {
+            if (!token) {
+              Alert.alert('Error', 'Authentication token not found');
+              return;
+            }
+
             setIsLoading(true);
-            setTimeout(() => {
+            try {
+              await apiService.deleteMaintenanceLog(token, maintenance.maintenance_id);
+              Alert.alert('Success', 'Maintenance log deleted successfully', [
+                { text: 'OK', onPress: () => router.back() }
+              ]);
+            } catch (error: any) {
+              console.error('Failed to delete maintenance log:', error);
+              Alert.alert('Error', error.message || 'Failed to delete maintenance log');
+            } finally {
               setIsLoading(false);
-              // Navigate back to vehicle detail after successful delete
-              router.back();
-            }, 1000);
+            }
           }
         }
       ]
@@ -126,13 +187,6 @@ export default function EditMaintenanceLogScreen() {
           <View style={styles.headerRight} />
         </View>
 
-        <View style={styles.vehicleInfo}>
-          <Ionicons name="car" size={20} color="#3B82F6" />
-          <Text style={styles.vehicleName}>
-            {vehicle.year} {vehicle.make} {vehicle.model}
-          </Text>
-        </View>
-
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -150,21 +204,20 @@ export default function EditMaintenanceLogScreen() {
             placeholder="e.g. Oil Change, Tire Rotation"
             value={type}
             onChangeText={setType}
-            leftIcon={<Ionicons name="build-outline" size={20} color="#6B7280" />}
+            leftIcon={<Ionicons name="construct-outline" size={20} color="#6B7280" />}
           />
           
           <Input
             label="Description *"
-            placeholder="Details about the maintenance"
+            placeholder="Brief description of the maintenance"
             value={description}
             onChangeText={setDescription}
-            multiline
             leftIcon={<Ionicons name="document-text-outline" size={20} color="#6B7280" />}
           />
           
           <Input
             label="Mileage *"
-            placeholder="Current odometer reading"
+            placeholder="Current vehicle mileage"
             value={mileage}
             onChangeText={setMileage}
             keyboardType="number-pad"
@@ -173,7 +226,7 @@ export default function EditMaintenanceLogScreen() {
           
           <Input
             label="Cost *"
-            placeholder="Total cost of service"
+            placeholder="Cost in dollars"
             value={cost}
             onChangeText={setCost}
             keyboardType="decimal-pad"
@@ -181,7 +234,7 @@ export default function EditMaintenanceLogScreen() {
           />
           
           <Input
-            label="Location"
+            label="Location *"
             placeholder="Where the service was performed"
             value={location}
             onChangeText={setLocation}
@@ -190,10 +243,11 @@ export default function EditMaintenanceLogScreen() {
           
           <Input
             label="Notes"
-            placeholder="Additional notes"
+            placeholder="Additional notes or details"
             value={notes}
             onChangeText={setNotes}
             multiline
+            numberOfLines={4}
             leftIcon={<Ionicons name="create-outline" size={20} color="#6B7280" />}
           />
           
@@ -224,6 +278,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 16,
+  },
   notFoundContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -237,11 +302,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   backButtonText: {
     color: '#3B82F6',
@@ -268,18 +329,6 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 40,
-  },
-  vehicleInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#EBF5FF',
-  },
-  vehicleName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginLeft: 8,
   },
   scrollContent: {
     padding: 16,

@@ -3,24 +3,28 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useTheme } from '@/context/ThemeContext';
-import { vehicles } from '@/data/dummyData';
+import { useVehicles } from '@/context/VehiclesContext';
+import { useAuth } from '@/context/AuthContext';
+import { apiService, FuelLog } from '@/services/api';
 
 export default function AddFuelLogScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
   const { statusBarStyle, backgroundColor, currencySymbol } = useTheme();
+  const { vehicles } = useVehicles();
+  const { token } = useAuth();
   
   // Find the vehicle based on the ID
-  const vehicle = vehicles.find(v => v.id === vehicleId);
+  const vehicle = vehicles.find(v => v.vehicle_id?.toString() === vehicleId);
   
   const [date, setDate] = useState('');
   const [liters, setLiters] = useState('');
   const [cost, setCost] = useState('');
-  const [mileage, setMileage] = useState(vehicle?.mileage.toString() || '');
+  const [mileage, setMileage] = useState(vehicle?.current_mileage.toString() || '');
   const [location, setLocation] = useState('');
   const [isFull, setIsFull] = useState(true);
   const [notes, setNotes] = useState('');
@@ -41,31 +45,75 @@ export default function AddFuelLogScreen() {
     );
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate form fields
-    if (!date || !cost || !mileage || !location) {
-      // Show error message (in a real app)
-      console.log('Please fill in all required fields');
+    if (!date || !cost || !mileage) {
+      Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
 
-    // For electric vehicles, liters can be 0
-    if (vehicle.fuelType !== 'Electric' && !liters) {
-      console.log('Please enter the amount of fuel');
+    // Validate date format (basic validation)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      Alert.alert('Invalid Date', 'Please enter date in YYYY-MM-DD format');
       return;
     }
 
-    // Simulate saving to backend
+    // Validate mileage format
+    const mileageNum = parseInt(mileage, 10);
+    if (isNaN(mileageNum) || mileageNum < 0) {
+      Alert.alert('Invalid Mileage', 'Please enter a valid mileage value');
+      return;
+    }
+
+    // Validate cost format
+    const costNum = parseFloat(cost);
+    if (isNaN(costNum) || costNum < 0) {
+      Alert.alert('Invalid Cost', 'Please enter a valid cost amount');
+      return;
+    }
+
+    // For non-electric vehicles, validate fuel amount
+    if (vehicle?.fuel_type !== 'Electric' && liters) {
+      const litersNum = parseFloat(liters);
+      if (isNaN(litersNum) || litersNum <= 0) {
+        Alert.alert('Invalid Fuel Amount', 'Please enter a valid fuel amount');
+        return;
+      }
+    }
+
+    if (!vehicle?.vehicle_id || !token) {
+      Alert.alert('Error', 'Vehicle or authentication information not found');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const fuelData: Partial<FuelLog> = {
+        vehicle_id: vehicle.vehicle_id,
+        date,
+        mileage: mileageNum,
+        fuel_amount: liters ? parseFloat(liters) : 0,
+        cost: costNum,
+        fuel_type: vehicle.fuel_type,
+        location: location || undefined,
+        notes: notes || undefined,
+      };
+
+      await apiService.createFuelLog(token, fuelData);
+      Alert.alert('Success', 'Fuel log added successfully', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
+      console.error('Failed to create fuel log:', error);
+      Alert.alert('Error', error.message || 'Failed to add fuel log');
+    } finally {
       setIsLoading(false);
-      // Navigate back to vehicle detail after successful save
-      router.back();
-    }, 1000);
+    }
   };
 
   // Determine if this is an electric vehicle
-  const isElectric = vehicle.fuelType === 'Electric';
+  const isElectric = vehicle?.fuel_type === 'Electric';
 
   return (
     <SafeArea style={styles.container} statusBarColor={backgroundColor}>

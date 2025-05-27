@@ -1,39 +1,64 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
+import { useReminders } from '@/context/RemindersContext';
+import { useVehicles } from '@/context/VehiclesContext';
 import { SafeArea } from '@/components/ui/SafeArea';
-
-import { reminders, vehicles } from '@/data/dummyData';
 import ReminderItem from '@/components/ReminderItem';
+import { Reminder as APIReminder } from '@/services/api';
+import { Reminder as UIReminder } from '@/data/dummyData';
+
+// Transform API reminder to UI reminder format
+const transformReminder = (apiReminder: APIReminder): UIReminder => ({
+  id: apiReminder.reminder_id.toString(),
+  vehicleId: apiReminder.user_id.toString(), // This needs to be fixed in the API
+  title: apiReminder.title,
+  description: apiReminder.description || '',
+  date: apiReminder.due_date,
+  isCompleted: false, // API doesn't have this field yet
+  repeatInterval: apiReminder.repeat_interval as any || 'none',
+});
 
 export default function RemindersScreen() {
   const { statusBarStyle, backgroundColor } = useTheme();
+  const { 
+    reminders, 
+    upcomingReminders, 
+    overdueReminders, 
+    isLoading, 
+    refreshReminders 
+  } = useReminders();
+  const { vehicles } = useVehicles();
   const [filterType, setFilterType] = useState<'all' | 'upcoming' | 'overdue'>('all');
   
-  // Get today's date for comparison
-  const today = new Date();
+  useEffect(() => {
+    refreshReminders();
+  }, []);
   
-  // Filter reminders based on selected filter
-  const filteredReminders = reminders.filter(reminder => {
-    const reminderDate = new Date(reminder.date);
-    
-    if (filterType === 'all') {
-      return !reminder.isCompleted;
-    } else if (filterType === 'upcoming') {
-      return !reminder.isCompleted && reminderDate >= today;
-    } else if (filterType === 'overdue') {
-      return !reminder.isCompleted && reminderDate < today;
+  // Get filtered reminders based on selected filter and transform them
+  const getFilteredReminders = () => {
+    let apiReminders: APIReminder[] = [];
+    switch (filterType) {
+      case 'upcoming':
+        apiReminders = upcomingReminders;
+        break;
+      case 'overdue':
+        apiReminders = overdueReminders;
+        break;
+      default:
+        apiReminders = reminders;
     }
-    
-    return true;
-  });
+    return apiReminders.map(transformReminder);
+  };
   
-  const handleToggleReminder = (reminderId: string) => {
-    // In a real app, this would update the reminder's completion status
-    console.log(`Toggle reminder ${reminderId}`);
+  const filteredReminders = getFilteredReminders();
+  
+  const handleToggleReminder = async (reminderId: string) => {
+    // For now, just navigate to edit reminder to mark as complete
+    router.push(`/edit-reminder/${reminderId}`);
   };
   
   const handleEditReminder = (reminderId: string) => {
@@ -41,9 +66,21 @@ export default function RemindersScreen() {
   };
   
   const getVehicleName = (vehicleId: string) => {
-    const vehicle = vehicles.find(v => v.id === vehicleId);
+    const vehicle = vehicles.find(v => v.vehicle_id.toString() === vehicleId);
     return vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : 'Unknown Vehicle';
   };
+  
+  if (isLoading) {
+    return (
+      <SafeArea style={styles.container} statusBarColor={backgroundColor}>
+        <StatusBar style={statusBarStyle} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>Loading reminders...</Text>
+        </View>
+      </SafeArea>
+    );
+  }
   
   return (
     <SafeArea style={styles.container} statusBarColor={backgroundColor}>
@@ -67,7 +104,7 @@ export default function RemindersScreen() {
               filterType === 'all' && styles.filterButtonTextActive
             ]}
           >
-            All
+            All ({reminders.length})
           </Text>
         </TouchableOpacity>
         
@@ -84,7 +121,7 @@ export default function RemindersScreen() {
               filterType === 'upcoming' && styles.filterButtonTextActive
             ]}
           >
-            Upcoming
+            Upcoming ({upcomingReminders.length})
           </Text>
         </TouchableOpacity>
         
@@ -101,7 +138,7 @@ export default function RemindersScreen() {
               filterType === 'overdue' && styles.filterButtonTextActive
             ]}
           >
-            Overdue
+            Overdue ({overdueReminders.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -147,6 +184,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
   },
   header: {
     paddingHorizontal: 16,

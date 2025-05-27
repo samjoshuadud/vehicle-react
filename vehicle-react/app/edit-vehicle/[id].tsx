@@ -8,14 +8,18 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
-import { vehicles } from '@/data/dummyData';
+import { useVehicles } from '@/context/VehiclesContext';
+import { useAuth } from '@/context/AuthContext';
+import { Vehicle } from '@/services/api';
 
 export default function EditVehicleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { statusBarStyle, backgroundColor } = useTheme();
+  const { vehicles, updateVehicle, deleteVehicle } = useVehicles();
+  const { token } = useAuth();
   
   // Find the vehicle based on the ID
-  const vehicle = vehicles.find(v => v.id === id);
+  const vehicle = vehicles.find(v => v.vehicle_id?.toString() === id);
   
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
@@ -33,12 +37,12 @@ export default function EditVehicleScreen() {
       setMake(vehicle.make);
       setModel(vehicle.model);
       setYear(vehicle.year.toString());
-      setColor(vehicle.color);
-      setLicensePlate(vehicle.licensePlate);
-      setVin(vehicle.vin);
-      setMileage(vehicle.mileage.toString());
-      setFuelType(vehicle.fuelType);
-      setPurchaseDate(vehicle.purchaseDate);
+      setColor(vehicle.color || '');
+      setLicensePlate(vehicle.license_plate || '');
+      setVin(vehicle.vin || '');
+      setMileage(vehicle.current_mileage.toString());
+      setFuelType(vehicle.fuel_type || '');
+      setPurchaseDate(vehicle.purchase_date || '');
     }
   }, [vehicle]);
 
@@ -57,7 +61,7 @@ export default function EditVehicleScreen() {
     );
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate form fields
     if (!make || !model || !year) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
@@ -72,21 +76,49 @@ export default function EditVehicleScreen() {
     }
 
     // Validate mileage format
-    if (mileage && isNaN(parseInt(mileage, 10))) {
+    const mileageNum = parseInt(mileage, 10);
+    if (mileage && isNaN(mileageNum)) {
       Alert.alert('Invalid Mileage', 'Please enter a valid mileage value');
       return;
     }
 
-    // Simulate saving to backend
+    if (!vehicle?.vehicle_id) {
+      Alert.alert('Error', 'Vehicle ID not found');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const updatedData: Partial<Vehicle> = {
+        make,
+        model,
+        year: yearNum,
+        color: color || undefined,
+        license_plate: licensePlate || undefined,
+        vin: vin || undefined,
+        current_mileage: mileageNum || 0,
+        fuel_type: fuelType || undefined,
+        purchase_date: purchaseDate || undefined,
+      };
+
+      await updateVehicle(vehicle.vehicle_id, updatedData);
+      Alert.alert('Success', 'Vehicle updated successfully', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
+      console.error('Failed to update vehicle:', error);
+      Alert.alert('Error', error.message || 'Failed to update vehicle');
+    } finally {
       setIsLoading(false);
-      // Navigate back to vehicle detail after successful save
-      router.back();
-    }, 1000);
+    }
   };
 
   const handleDelete = () => {
+    if (!vehicle?.vehicle_id) {
+      Alert.alert('Error', 'Vehicle ID not found');
+      return;
+    }
+
     Alert.alert(
       'Delete Vehicle',
       'Are you sure you want to delete this vehicle? This action cannot be undone.',
@@ -95,14 +127,18 @@ export default function EditVehicleScreen() {
         { 
           text: 'Delete', 
           style: 'destructive',
-          onPress: () => {
-            // Simulate deleting from backend
+          onPress: async () => {
             setIsLoading(true);
-            setTimeout(() => {
+            try {
+              await deleteVehicle(vehicle.vehicle_id!);
+              Alert.alert('Success', 'Vehicle deleted successfully', [
+                { text: 'OK', onPress: () => router.replace('/(tabs)') }
+              ]);
+            } catch (error: any) {
+              console.error('Failed to delete vehicle:', error);
+              Alert.alert('Error', error.message || 'Failed to delete vehicle');
               setIsLoading(false);
-              // Navigate back to dashboard after successful delete
-              router.replace('/(tabs)');
-            }, 1000);
+            }
           }
         }
       ]

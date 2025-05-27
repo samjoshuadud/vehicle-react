@@ -3,24 +3,28 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useTheme } from '@/context/ThemeContext';
-import { vehicles } from '@/data/dummyData';
+import { useVehicles } from '@/context/VehiclesContext';
+import { useAuth } from '@/context/AuthContext';
+import { apiService, MaintenanceLog } from '@/services/api';
 
 export default function AddMaintenanceLogScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
   const { statusBarStyle, backgroundColor } = useTheme();
+  const { vehicles } = useVehicles();
+  const { token } = useAuth();
   
   // Find the vehicle based on the ID
-  const vehicle = vehicles.find(v => v.id === vehicleId);
+  const vehicle = vehicles.find(v => v.vehicle_id?.toString() === vehicleId);
   
   const [date, setDate] = useState('');
   const [type, setType] = useState('');
   const [description, setDescription] = useState('');
-  const [mileage, setMileage] = useState(vehicle?.mileage.toString() || '');
+  const [mileage, setMileage] = useState(vehicle?.current_mileage.toString() || '');
   const [cost, setCost] = useState('');
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
@@ -41,21 +45,62 @@ export default function AddMaintenanceLogScreen() {
     );
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate form fields
-    if (!date || !type || !description || !mileage || !cost || !location) {
-      // Show error message (in a real app)
-      console.log('Please fill in all required fields');
+    if (!date || !type || !description || !mileage || !cost) {
+      Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
 
-    // Simulate saving to backend
+    // Validate date format (basic validation)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      Alert.alert('Invalid Date', 'Please enter date in YYYY-MM-DD format');
+      return;
+    }
+
+    // Validate mileage format
+    const mileageNum = parseInt(mileage, 10);
+    if (isNaN(mileageNum) || mileageNum < 0) {
+      Alert.alert('Invalid Mileage', 'Please enter a valid mileage value');
+      return;
+    }
+
+    // Validate cost format
+    const costNum = parseFloat(cost);
+    if (isNaN(costNum) || costNum < 0) {
+      Alert.alert('Invalid Cost', 'Please enter a valid cost amount');
+      return;
+    }
+
+    if (!vehicle?.vehicle_id || !token) {
+      Alert.alert('Error', 'Vehicle or authentication information not found');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const maintenanceData: Partial<MaintenanceLog> = {
+        vehicle_id: vehicle.vehicle_id,
+        date,
+        type,
+        description,
+        mileage: mileageNum,
+        cost: costNum,
+        location: location || undefined,
+        notes: notes || undefined,
+      };
+
+      await apiService.createMaintenanceLog(token, maintenanceData);
+      Alert.alert('Success', 'Maintenance log added successfully', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
+      console.error('Failed to create maintenance log:', error);
+      Alert.alert('Error', error.message || 'Failed to add maintenance log');
+    } finally {
       setIsLoading(false);
-      // Navigate back to vehicle detail after successful save
-      router.back();
-    }, 1000);
+    }
   };
 
   return (

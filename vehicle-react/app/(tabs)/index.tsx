@@ -2,24 +2,33 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, RefreshControl } from 'react-native';
 
 import { SafeArea } from '@/components/ui/SafeArea';
 import VehicleCard from '@/components/VehicleCard';
 import { useTheme } from '@/context/ThemeContext';
-import { vehicles } from '@/data/dummyData';
+import { useVehicles } from '@/context/VehiclesContext';
+import { Vehicle } from '@/services/api';
 
 export default function DashboardScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const { statusBarStyle, backgroundColor } = useTheme();
+  const { vehicles, isLoading, refreshVehicles } = useVehicles();
 
-  const navigateToVehicleDetail = (vehicleId: string) => {
+  const navigateToVehicleDetail = (vehicleId: number) => {
     router.push(`/vehicle/${vehicleId}`);
   };
 
   const navigateToAddVehicle = () => {
     router.push('/add-vehicle');
   };
+
+  const renderVehicleCard = ({ item }: { item: Vehicle }) => (
+    <VehicleCard
+      vehicle={item}
+      onPress={() => navigateToVehicleDetail(item.vehicle_id)}
+    />
+  );
 
   return (
     <SafeArea style={styles.container} statusBarColor={backgroundColor}>
@@ -49,27 +58,37 @@ export default function DashboardScreen() {
       
       <FlatList
         data={vehicles}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <VehicleCard 
-            vehicle={item} 
-            onPress={() => navigateToVehicleDetail(item.id)} 
-          />
-        )}
+        keyExtractor={(item) => item.vehicle_id.toString()}
+        renderItem={renderVehicleCard}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={refreshVehicles}
+            colors={['#3B82F6']}
+            tintColor='#3B82F6'
+          />
+        }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="car-outline" size={64} color="#D1D5DB" />
-            <Text style={styles.emptyTitle}>No vehicles yet</Text>
-            <Text style={styles.emptySubtitle}>Add your first vehicle to get started</Text>
-            <TouchableOpacity 
-              style={styles.emptyButton}
-              onPress={navigateToAddVehicle}
-            >
-              <Text style={styles.emptyButtonText}>Add Vehicle</Text>
-            </TouchableOpacity>
-          </View>
+          isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#3B82F6" />
+              <Text style={styles.loadingText}>Loading vehicles...</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="car-outline" size={64} color="#D1D5DB" />
+              <Text style={styles.emptyTitle}>No vehicles yet</Text>
+              <Text style={styles.emptySubtitle}>Add your first vehicle to get started</Text>
+              <TouchableOpacity 
+                style={styles.emptyButton}
+                onPress={navigateToAddVehicle}
+              >
+                <Text style={styles.emptyButtonText}>Add Vehicle</Text>
+              </TouchableOpacity>
+            </View>
+          )
         }
       />
     </SafeArea>
@@ -168,5 +187,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 64,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 16,
   },
 });
