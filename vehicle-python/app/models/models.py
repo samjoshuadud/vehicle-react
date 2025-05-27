@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, Enum, ForeignKey, Text, Numeric, DECIMAL
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.mysql import LONGTEXT
 from ..database.database import Base
 
 class User(Base):
@@ -30,7 +31,7 @@ class Vehicle(Base):
     current_mileage = Column(Integer, default=0)
     fuel_type = Column(String(30))
     purchase_date = Column(Date)
-    vehicle_image_url = Column(Text)
+    vehicle_image = Column(LONGTEXT)  # Base64 encoded image data
 
     # Relationships
     owner = relationship("User", back_populates="vehicles")

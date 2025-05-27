@@ -33,7 +33,7 @@ class VehicleBase(BaseModel):
     current_mileage: int = 0
     fuel_type: Optional[str] = None
     purchase_date: Optional[date] = None
-    vehicle_image_url: Optional[str] = None
+    vehicle_image: Optional[str] = None  # Base64 encoded image data
 
 class VehicleCreate(VehicleBase):
     pass
