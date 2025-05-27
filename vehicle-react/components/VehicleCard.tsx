@@ -18,7 +18,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onPress }) => {
       activeOpacity={0.7}
     >
       <Image 
-        source={{ uri: vehicle.vehicle_image_url || defaultImage }} 
+        source={{ uri: vehicle.vehicle_image || defaultImage }} 
         style={styles.image}
         resizeMode="cover"
       />

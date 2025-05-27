@@ -41,52 +41,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadUser = async () => {
     try {
+      console.log('🔍 AuthContext: Loading stored user data...');
       const userData = await AsyncStorage.getItem('user');
       const tokenData = await AsyncStorage.getItem('token');
       const rememberMe = await AsyncStorage.getItem('rememberMe');
       
+      console.log('📱 AuthContext: Stored data check:', {
+        hasUser: !!userData,
+        hasToken: !!tokenData,
+        rememberMe: rememberMe
+      });
+      
       if (userData && tokenData && rememberMe === 'true') {
+        console.log('🔐 AuthContext: Validating stored token with backend...');
         // Validate the stored token before using it
         const isValidToken = await apiService.validateToken(tokenData);
         
         if (isValidToken) {
+          console.log('✅ AuthContext: Token is valid, user authenticated');
           setUser(JSON.parse(userData));
           setToken(tokenData);
         } else {
           // Token is invalid, clear stored data
-          console.log('AuthContext: Stored token is invalid, clearing data');
+          console.log('❌ AuthContext: Stored token is invalid, clearing data');
           await AsyncStorage.removeItem('user');
           await AsyncStorage.removeItem('token');
           await AsyncStorage.removeItem('rememberMe');
         }
+      } else {
+        console.log('🚫 AuthContext: No valid stored credentials found');
       }
     } catch (error) {
-      console.error('Error loading user:', error);
+      console.error('💥 AuthContext: Error loading user:', error);
       // Clear potentially corrupted data
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('rememberMe');
     } finally {
+      console.log('✅ AuthContext: Load user process completed');
       setIsLoading(false);
     }
   };
 
   const login = async (email: string, password: string, rememberMe: boolean = false) => {
     try {
-      console.log('AuthContext: Starting login process');
+      console.log('🚀 AuthContext: Starting login process for:', email);
+      console.log('📡 AuthContext: Making API call to backend...');
       const loginResponse = await apiService.login(email, password);
-      console.log('AuthContext: Login successful, fetching profile');
+      console.log('✅ AuthContext: Login API call successful, fetching profile...');
       const userProfile = await apiService.getUserProfile(loginResponse.access_token);
+      console.log('👤 AuthContext: User profile fetched successfully');
       
+      console.log('💾 AuthContext: Storing user data locally...');
       await AsyncStorage.setItem('token', loginResponse.access_token);
       await AsyncStorage.setItem('user', JSON.stringify(userProfile));
       await AsyncStorage.setItem('rememberMe', rememberMe.toString());
       
       setToken(loginResponse.access_token);
       setUser(userProfile);
-      console.log('AuthContext: Login complete');
+      console.log('🎉 AuthContext: Login process completed successfully');
     } catch (error) {
-      console.error('AuthContext: Login failed', error);
+      console.error('💥 AuthContext: Login failed', error);
       throw error;
     }
   };

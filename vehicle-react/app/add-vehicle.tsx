@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -21,8 +22,8 @@ export default function AddVehicleScreen() {
   const [mileage, setMileage] = useState('');
   const [fuelType, setFuelType] = useState('');
   const [purchaseDate, setPurchaseDate] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [base64Image, setBase64Image] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { statusBarStyle, backgroundColor } = useTheme();
 
@@ -44,9 +45,22 @@ export default function AddVehicleScreen() {
     });
 
     if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
-      // Also update the URL state for backend storage (you might want to upload the image to a server)
-      setImageUrl(result.assets[0].uri);
+      const imageUri = result.assets[0].uri;
+      setImageUri(imageUri);
+      
+      try {
+        // Convert image to base64
+        const base64 = await FileSystem.readAsStringAsync(imageUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        // Add proper data URL prefix for image display
+        const mimeType = imageUri.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+        setBase64Image(dataUrl);
+      } catch (error) {
+        console.error('Error converting image to base64:', error);
+        Alert.alert('Error', 'Failed to process the selected image');
+      }
     }
   };
 
@@ -88,7 +102,7 @@ export default function AddVehicleScreen() {
       if (mileage) vehicleData.current_mileage = parseInt(mileage);
       if (fuelType.trim()) vehicleData.fuel_type = fuelType.trim();
       if (purchaseDate.trim()) vehicleData.purchase_date = purchaseDate.trim();
-      if (imageUrl.trim()) vehicleData.image_url = imageUrl.trim();
+      if (base64Image) vehicleData.vehicle_image = base64Image;
 
       await addVehicle(vehicleData);
       
@@ -238,14 +252,9 @@ export default function AddVehicleScreen() {
               leftIcon={<Ionicons name="calendar-outline" size={20} color="#6B7280" />}
             />
             
-            <Input
-              label="Vehicle Image URL"
-              placeholder="https://example.com/image.jpg"
-              value={imageUrl}
-              onChangeText={setImageUrl}
-              keyboardType="url"
-              leftIcon={<Ionicons name="image-outline" size={20} color="#6B7280" />}
-            />
+            <Text style={styles.imageNote}>
+              💡 Tip: Select an image using the image picker above. Images are stored directly in the app.
+            </Text>
           </View>
           
           <View style={styles.buttonContainer}>
@@ -340,5 +349,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
+  },
+  imageNote: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    marginTop: 8,
   },
 });

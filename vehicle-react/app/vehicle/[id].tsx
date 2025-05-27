@@ -157,7 +157,7 @@ export default function VehicleDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Image 
-          source={{ uri: vehicle.vehicle_image_url || 'https://via.placeholder.com/400x200?text=Vehicle' }} 
+          source={{ uri: vehicle.vehicle_image || 'https://via.placeholder.com/400x200?text=Vehicle' }} 
           style={styles.headerImage}
           resizeMode="cover"
         />

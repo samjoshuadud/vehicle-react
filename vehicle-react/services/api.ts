@@ -20,7 +20,7 @@ export interface Vehicle {
   current_mileage: number;
   fuel_type?: string;
   purchase_date?: string;
-  vehicle_image_url?: string;
+  vehicle_image?: string; // Base64 encoded image data
 }
 
 export interface MaintenanceLog {
@@ -87,25 +87,19 @@ class ApiService {
       formData.append('username', email); // FastAPI expects 'username' for email
       formData.append('password', password);
 
-      console.log('Attempting login for:', email);
       const response = await fetch(`${this.baseUrl}/auth/token`, {
         method: 'POST',
         body: formData,
       });
-
-      console.log('Login response status:', response.status);
       
       if (!response.ok) {
         const error = await response.json();
-        console.error('Login error:', error);
         throw new Error(error.detail || 'Login failed');
       }
 
       const result = await response.json();
-      console.log('Login successful');
       return result;
     } catch (error) {
-      console.error('Login network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -115,7 +109,6 @@ class ApiService {
 
   async register(userData: RegisterRequest): Promise<User> {
     try {
-      console.log('Attempting registration for:', userData.email);
       const response = await fetch(`${this.baseUrl}/auth/register`, {
         method: 'POST',
         headers: {
@@ -130,19 +123,14 @@ class ApiService {
         }),
       });
 
-      console.log('Registration response status:', response.status);
-
       if (!response.ok) {
         const error = await response.json();
-        console.error('Registration error:', error);
         throw new Error(error.detail || 'Registration failed');
       }
 
       const result = await response.json();
-      console.log('Registration successful');
       return result;
     } catch (error) {
-      console.error('Registration network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -152,7 +140,6 @@ class ApiService {
 
   async getUserProfile(token: string): Promise<User> {
     try {
-      console.log('Fetching user profile...');
       const response = await fetch(`${this.baseUrl}/users/me`, {
         method: 'GET',
         headers: {
@@ -161,19 +148,14 @@ class ApiService {
         },
       });
 
-      console.log('User profile response status:', response.status);
-
       if (!response.ok) {
         const error = await response.json();
-        console.error('User profile error:', error);
         throw new Error(error.detail || 'Failed to get user profile');
       }
 
       const result = await response.json();
-      console.log('User profile fetched successfully');
       return result;
     } catch (error) {
-      console.error('User profile network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -183,7 +165,6 @@ class ApiService {
 
   async validateToken(token: string): Promise<boolean> {
     try {
-      console.log('Validating token...');
       const response = await fetch(`${this.baseUrl}/users/me`, {
         method: 'GET',
         headers: {
@@ -191,23 +172,17 @@ class ApiService {
           'Content-Type': 'application/json',
         },
       });
-
-      console.log('Token validation response status:', response.status);
       
       if (response.status === 401 || response.status === 403) {
-        console.log('Token is invalid or expired');
         return false;
       }
 
       if (!response.ok) {
-        console.log('Token validation failed with status:', response.status);
         return false;
       }
 
-      console.log('Token is valid');
       return true;
     } catch (error) {
-      console.error('Token validation network error:', error);
       return false;
     }
   }
@@ -215,7 +190,6 @@ class ApiService {
   // Vehicle management methods
   async getVehicles(token: string): Promise<Vehicle[]> {
     try {
-      console.log('Fetching vehicles...');
       const response = await fetch(`${this.baseUrl}/vehicles/`, {
         method: 'GET',
         headers: {
@@ -224,26 +198,20 @@ class ApiService {
         },
       });
 
-      console.log('Vehicles response status:', response.status);
-
       if (!response.ok) {
         let errorMessage = 'Failed to get vehicles';
         try {
           const error = await response.json();
-          console.error('Vehicles error:', error);
           errorMessage = error.detail || errorMessage;
         } catch (parseError) {
-          console.error('Failed to parse error response, likely HTML:', parseError);
           errorMessage = response.status === 401 ? 'Authentication failed' : `Server error (${response.status})`;
         }
         throw new Error(errorMessage);
       }
 
       const result = await response.json();
-      console.log('Vehicles fetched successfully');
       return result;
     } catch (error) {
-      console.error('Vehicles network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -253,7 +221,6 @@ class ApiService {
 
   async createVehicle(token: string, vehicleData: Partial<Vehicle>): Promise<Vehicle> {
     try {
-      console.log('Creating vehicle...');
       const response = await fetch(`${this.baseUrl}/vehicles/`, {
         method: 'POST',
         headers: {
@@ -263,19 +230,14 @@ class ApiService {
         body: JSON.stringify(vehicleData),
       });
 
-      console.log('Create vehicle response status:', response.status);
-
       if (!response.ok) {
         const error = await response.json();
-        console.error('Create vehicle error:', error);
         throw new Error(error.detail || 'Failed to create vehicle');
       }
 
       const result = await response.json();
-      console.log('Vehicle created successfully');
       return result;
     } catch (error) {
-      console.error('Create vehicle network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -285,7 +247,6 @@ class ApiService {
 
   async getVehicleById(token: string, vehicleId: number): Promise<Vehicle> {
     try {
-      console.log('Fetching vehicle by ID:', vehicleId);
       const response = await fetch(`${this.baseUrl}/vehicles/${vehicleId}`, {
         method: 'GET',
         headers: {
@@ -294,19 +255,14 @@ class ApiService {
         },
       });
 
-      console.log('Vehicle by ID response status:', response.status);
-
       if (!response.ok) {
         const error = await response.json();
-        console.error('Vehicle by ID error:', error);
         throw new Error(error.detail || 'Failed to get vehicle');
       }
 
       const result = await response.json();
-      console.log('Vehicle fetched successfully');
       return result;
     } catch (error) {
-      console.error('Vehicle by ID network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -316,7 +272,6 @@ class ApiService {
 
   async getMaintenanceLogs(token: string, vehicleId: number): Promise<MaintenanceLog[]> {
     try {
-      console.log('Fetching maintenance logs for vehicle:', vehicleId);
       const response = await fetch(`${this.baseUrl}/maintenance/vehicle/${vehicleId}`, {
         method: 'GET',
         headers: {
@@ -325,19 +280,15 @@ class ApiService {
         },
       });
 
-      console.log('Maintenance logs response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Maintenance logs error:', error);
         throw new Error(error.detail || 'Failed to get maintenance logs');
       }
 
       const result = await response.json();
-      console.log('Maintenance logs fetched successfully');
       return result;
     } catch (error) {
-      console.error('Maintenance logs network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -347,7 +298,6 @@ class ApiService {
 
   async getFuelLogs(token: string, vehicleId: number): Promise<FuelLog[]> {
     try {
-      console.log('Fetching fuel logs for vehicle:', vehicleId);
       const response = await fetch(`${this.baseUrl}/fuel/vehicle/${vehicleId}`, {
         method: 'GET',
         headers: {
@@ -356,19 +306,15 @@ class ApiService {
         },
       });
 
-      console.log('Fuel logs response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Fuel logs error:', error);
         throw new Error(error.detail || 'Failed to get fuel logs');
       }
 
       const result = await response.json();
-      console.log('Fuel logs fetched successfully');
       return result;
     } catch (error) {
-      console.error('Fuel logs network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -378,7 +324,6 @@ class ApiService {
 
   async updateVehicle(token: string, vehicleId: number, vehicleData: Partial<Vehicle>): Promise<Vehicle> {
     try {
-      console.log('Updating vehicle:', vehicleId);
       const response = await fetch(`${this.baseUrl}/vehicles/${vehicleId}`, {
         method: 'PUT',
         headers: {
@@ -388,19 +333,15 @@ class ApiService {
         body: JSON.stringify(vehicleData),
       });
 
-      console.log('Update vehicle response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Update vehicle error:', error);
         throw new Error(error.detail || 'Failed to update vehicle');
       }
 
       const result = await response.json();
-      console.log('Vehicle updated successfully');
       return result;
     } catch (error) {
-      console.error('Update vehicle network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -410,7 +351,6 @@ class ApiService {
 
   async deleteVehicle(token: string, vehicleId: number): Promise<void> {
     try {
-      console.log('Deleting vehicle:', vehicleId);
       const response = await fetch(`${this.baseUrl}/vehicles/${vehicleId}`, {
         method: 'DELETE',
         headers: {
@@ -419,17 +359,13 @@ class ApiService {
         },
       });
 
-      console.log('Delete vehicle response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Delete vehicle error:', error);
         throw new Error(error.detail || 'Failed to delete vehicle');
       }
 
-      console.log('Vehicle deleted successfully');
     } catch (error) {
-      console.error('Delete vehicle network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -439,7 +375,6 @@ class ApiService {
 
   async createMaintenanceLog(token: string, maintenanceData: Partial<MaintenanceLog>): Promise<MaintenanceLog> {
     try {
-      console.log('Creating maintenance log...');
       const response = await fetch(`${this.baseUrl}/maintenance/`, {
         method: 'POST',
         headers: {
@@ -449,19 +384,15 @@ class ApiService {
         body: JSON.stringify(maintenanceData),
       });
 
-      console.log('Create maintenance log response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Create maintenance log error:', error);
         throw new Error(error.detail || 'Failed to create maintenance log');
       }
 
       const result = await response.json();
-      console.log('Maintenance log created successfully');
       return result;
     } catch (error) {
-      console.error('Create maintenance log network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -471,7 +402,6 @@ class ApiService {
 
   async updateMaintenanceLog(token: string, maintenanceId: number, maintenanceData: Partial<MaintenanceLog>): Promise<MaintenanceLog> {
     try {
-      console.log('Updating maintenance log:', maintenanceId);
       const response = await fetch(`${this.baseUrl}/maintenance/${maintenanceId}`, {
         method: 'PUT',
         headers: {
@@ -481,19 +411,15 @@ class ApiService {
         body: JSON.stringify(maintenanceData),
       });
 
-      console.log('Update maintenance log response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Update maintenance log error:', error);
         throw new Error(error.detail || 'Failed to update maintenance log');
       }
 
       const result = await response.json();
-      console.log('Maintenance log updated successfully');
       return result;
     } catch (error) {
-      console.error('Update maintenance log network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -503,7 +429,6 @@ class ApiService {
 
   async deleteMaintenanceLog(token: string, maintenanceId: number): Promise<void> {
     try {
-      console.log('Deleting maintenance log:', maintenanceId);
       const response = await fetch(`${this.baseUrl}/maintenance/${maintenanceId}`, {
         method: 'DELETE',
         headers: {
@@ -512,17 +437,13 @@ class ApiService {
         },
       });
 
-      console.log('Delete maintenance log response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Delete maintenance log error:', error);
         throw new Error(error.detail || 'Failed to delete maintenance log');
       }
 
-      console.log('Maintenance log deleted successfully');
     } catch (error) {
-      console.error('Delete maintenance log network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -532,7 +453,6 @@ class ApiService {
 
   async createFuelLog(token: string, fuelData: Partial<FuelLog>): Promise<FuelLog> {
     try {
-      console.log('Creating fuel log...');
       const response = await fetch(`${this.baseUrl}/fuel/`, {
         method: 'POST',
         headers: {
@@ -542,19 +462,15 @@ class ApiService {
         body: JSON.stringify(fuelData),
       });
 
-      console.log('Create fuel log response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Create fuel log error:', error);
         throw new Error(error.detail || 'Failed to create fuel log');
       }
 
       const result = await response.json();
-      console.log('Fuel log created successfully');
       return result;
     } catch (error) {
-      console.error('Create fuel log network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -564,7 +480,6 @@ class ApiService {
 
   async updateFuelLog(token: string, fuelId: number, fuelData: Partial<FuelLog>): Promise<FuelLog> {
     try {
-      console.log('Updating fuel log:', fuelId);
       const response = await fetch(`${this.baseUrl}/fuel/${fuelId}`, {
         method: 'PUT',
         headers: {
@@ -574,19 +489,15 @@ class ApiService {
         body: JSON.stringify(fuelData),
       });
 
-      console.log('Update fuel log response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Update fuel log error:', error);
         throw new Error(error.detail || 'Failed to update fuel log');
       }
 
       const result = await response.json();
-      console.log('Fuel log updated successfully');
       return result;
     } catch (error) {
-      console.error('Update fuel log network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -596,7 +507,6 @@ class ApiService {
 
   async deleteFuelLog(token: string, fuelId: number): Promise<void> {
     try {
-      console.log('Deleting fuel log:', fuelId);
       const response = await fetch(`${this.baseUrl}/fuel/${fuelId}`, {
         method: 'DELETE',
         headers: {
@@ -605,17 +515,13 @@ class ApiService {
         },
       });
 
-      console.log('Delete fuel log response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Delete fuel log error:', error);
         throw new Error(error.detail || 'Failed to delete fuel log');
       }
 
-      console.log('Fuel log deleted successfully');
     } catch (error) {
-      console.error('Delete fuel log network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -626,7 +532,6 @@ class ApiService {
   // Get individual maintenance log by ID
   async getMaintenanceById(token: string, maintenanceId: number): Promise<MaintenanceLog> {
     try {
-      console.log('Fetching maintenance log:', maintenanceId);
       const response = await fetch(`${this.baseUrl}/maintenance/${maintenanceId}`, {
         method: 'GET',
         headers: {
@@ -637,15 +542,12 @@ class ApiService {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Get maintenance error:', error);
         throw new Error(error.detail || 'Failed to fetch maintenance log');
       }
 
       const result = await response.json();
-      console.log('Maintenance log fetched successfully');
       return result;
     } catch (error) {
-      console.error('Get maintenance network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -656,7 +558,6 @@ class ApiService {
   // Get individual fuel log by ID
   async getFuelById(token: string, fuelId: number): Promise<FuelLog> {
     try {
-      console.log('Fetching fuel log:', fuelId);
       const response = await fetch(`${this.baseUrl}/fuel/${fuelId}`, {
         method: 'GET',
         headers: {
@@ -667,15 +568,12 @@ class ApiService {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Get fuel error:', error);
         throw new Error(error.detail || 'Failed to fetch fuel log');
       }
 
       const result = await response.json();
-      console.log('Fuel log fetched successfully');
       return result;
     } catch (error) {
-      console.error('Get fuel network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -686,7 +584,6 @@ class ApiService {
   // Get all reminders for user
   async getReminders(token: string): Promise<Reminder[]> {
     try {
-      console.log('Fetching reminders...');
       const response = await fetch(`${this.baseUrl}/reminders/`, {
         method: 'GET',
         headers: {
@@ -699,20 +596,16 @@ class ApiService {
         let errorMessage = 'Failed to fetch reminders';
         try {
           const error = await response.json();
-          console.error('Get reminders error:', error);
           errorMessage = error.detail || errorMessage;
         } catch (parseError) {
-          console.error('Failed to parse error response, likely HTML:', parseError);
           errorMessage = response.status === 401 ? 'Authentication failed' : `Server error (${response.status})`;
         }
         throw new Error(errorMessage);
       }
 
       const result = await response.json();
-      console.log('Reminders fetched successfully');
       return result;
     } catch (error) {
-      console.error('Get reminders network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -723,7 +616,6 @@ class ApiService {
   // Get upcoming reminders
   async getUpcomingReminders(token: string, days: number = 7): Promise<Reminder[]> {
     try {
-      console.log('Fetching upcoming reminders...');
       const response = await fetch(`${this.baseUrl}/reminders/upcoming?days=${days}`, {
         method: 'GET',
         headers: {
@@ -736,20 +628,16 @@ class ApiService {
         let errorMessage = 'Failed to fetch upcoming reminders';
         try {
           const error = await response.json();
-          console.error('Get upcoming reminders error:', error);
           errorMessage = error.detail || errorMessage;
         } catch (parseError) {
-          console.error('Failed to parse error response, likely HTML:', parseError);
           errorMessage = response.status === 401 ? 'Authentication failed' : `Server error (${response.status})`;
         }
         throw new Error(errorMessage);
       }
 
       const result = await response.json();
-      console.log('Upcoming reminders fetched successfully');
       return result;
     } catch (error) {
-      console.error('Get upcoming reminders network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -760,7 +648,6 @@ class ApiService {
   // Get overdue reminders
   async getOverdueReminders(token: string): Promise<Reminder[]> {
     try {
-      console.log('Fetching overdue reminders...');
       const response = await fetch(`${this.baseUrl}/reminders/overdue`, {
         method: 'GET',
         headers: {
@@ -773,20 +660,16 @@ class ApiService {
         let errorMessage = 'Failed to fetch overdue reminders';
         try {
           const error = await response.json();
-          console.error('Get overdue reminders error:', error);
           errorMessage = error.detail || errorMessage;
         } catch (parseError) {
-          console.error('Failed to parse error response, likely HTML:', parseError);
           errorMessage = response.status === 401 ? 'Authentication failed' : `Server error (${response.status})`;
         }
         throw new Error(errorMessage);
       }
 
       const result = await response.json();
-      console.log('Overdue reminders fetched successfully');
       return result;
     } catch (error) {
-      console.error('Get overdue reminders network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -797,7 +680,6 @@ class ApiService {
   // Create reminder
   async createReminder(token: string, reminderData: Partial<Reminder>): Promise<Reminder> {
     try {
-      console.log('Creating reminder...');
       const response = await fetch(`${this.baseUrl}/reminders/`, {
         method: 'POST',
         headers: {
@@ -809,15 +691,12 @@ class ApiService {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Create reminder error:', error);
         throw new Error(error.detail || 'Failed to create reminder');
       }
 
       const result = await response.json();
-      console.log('Reminder created successfully');
       return result;
     } catch (error) {
-      console.error('Create reminder network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -828,7 +707,6 @@ class ApiService {
   // Get individual reminder by ID
   async getReminderById(token: string, reminderId: number): Promise<Reminder> {
     try {
-      console.log('Fetching reminder:', reminderId);
       const response = await fetch(`${this.baseUrl}/reminders/${reminderId}`, {
         method: 'GET',
         headers: {
@@ -839,15 +717,12 @@ class ApiService {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Get reminder error:', error);
         throw new Error(error.detail || 'Failed to fetch reminder');
       }
 
       const result = await response.json();
-      console.log('Reminder fetched successfully');
       return result;
     } catch (error) {
-      console.error('Get reminder network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -858,7 +733,6 @@ class ApiService {
   // Update reminder
   async updateReminder(token: string, reminderId: number, reminderData: Partial<Reminder>): Promise<Reminder> {
     try {
-      console.log('Updating reminder:', reminderId);
       const response = await fetch(`${this.baseUrl}/reminders/${reminderId}`, {
         method: 'PUT',
         headers: {
@@ -870,15 +744,12 @@ class ApiService {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Update reminder error:', error);
         throw new Error(error.detail || 'Failed to update reminder');
       }
 
       const result = await response.json();
-      console.log('Reminder updated successfully');
       return result;
     } catch (error) {
-      console.error('Update reminder network error:', error);
       if (error instanceof Error) {
         throw error;
       }
@@ -889,7 +760,6 @@ class ApiService {
   // Delete reminder
   async deleteReminder(token: string, reminderId: number): Promise<void> {
     try {
-      console.log('Deleting reminder:', reminderId);
       const response = await fetch(`${this.baseUrl}/reminders/${reminderId}`, {
         method: 'DELETE',
         headers: {
@@ -900,13 +770,10 @@ class ApiService {
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Delete reminder error:', error);
         throw new Error(error.detail || 'Failed to delete reminder');
       }
 
-      console.log('Reminder deleted successfully');
     } catch (error) {
-      console.error('Delete reminder network error:', error);
       if (error instanceof Error) {
         throw error;
       }
