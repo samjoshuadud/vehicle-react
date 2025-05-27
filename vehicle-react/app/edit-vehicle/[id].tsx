@@ -2,7 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -30,6 +32,8 @@ export default function EditVehicleScreen() {
   const [mileage, setMileage] = useState('');
   const [fuelType, setFuelType] = useState('');
   const [purchaseDate, setPurchaseDate] = useState('');
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [base64Image, setBase64Image] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -43,6 +47,12 @@ export default function EditVehicleScreen() {
       setMileage(vehicle.current_mileage.toString());
       setFuelType(vehicle.fuel_type || '');
       setPurchaseDate(vehicle.purchase_date || '');
+      
+      // Set existing image if available
+      if (vehicle.vehicle_image) {
+        setImageUri(vehicle.vehicle_image);
+        setBase64Image(vehicle.vehicle_image);
+      }
     }
   }, [vehicle]);
 
@@ -99,6 +109,7 @@ export default function EditVehicleScreen() {
         current_mileage: mileageNum || 0,
         fuel_type: fuelType || undefined,
         purchase_date: purchaseDate || undefined,
+        vehicle_image: base64Image || undefined,
       };
 
       await updateVehicle(vehicle.vehicle_id, updatedData);
@@ -145,6 +156,43 @@ export default function EditVehicleScreen() {
     );
   };
 
+  const pickImage = async () => {
+    // Request permissions
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      alert('Sorry, we need camera roll permissions to make this work!');
+      return;
+    }
+
+    // Pick the image
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      const imageUri = result.assets[0].uri;
+      setImageUri(imageUri);
+      
+      try {
+        // Convert image to base64
+        const base64 = await FileSystem.readAsStringAsync(imageUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        // Add proper data URL prefix for image display
+        const mimeType = imageUri.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+        setBase64Image(dataUrl);
+      } catch (error) {
+        console.error('Error converting image to base64:', error);
+        Alert.alert('Error', 'Failed to process the selected image');
+      }
+    }
+  };
+
   return (
     <SafeArea style={styles.container} statusBarColor={backgroundColor}>
       <StatusBar style={statusBarStyle} />
@@ -167,6 +215,22 @@ export default function EditVehicleScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.imageSection}>
+            <TouchableOpacity 
+              style={[styles.imagePickerContainer, imageUri && styles.imagePreviewContainer]} 
+              onPress={pickImage}
+            >
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+              ) : (
+                <>
+                  <Ionicons name="image-outline" size={40} color="#6B7280" />
+                  <Text style={styles.imagePickerText}>Tap to select vehicle image</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+          
           <Input
             label="Make *"
             placeholder="e.g. Toyota, Honda, Ford"
@@ -267,6 +331,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  imageSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  imagePickerContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+  },
+  imagePreviewContainer: {
+    borderStyle: 'solid',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  imagePickerText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#6B7280',
   },
   notFoundContainer: {
     flex: 1,
