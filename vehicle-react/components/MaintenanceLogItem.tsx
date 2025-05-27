@@ -22,7 +22,8 @@ const MaintenanceLogItem: React.FC<MaintenanceLogItemProps> = ({ log, onPress })
       </View>
       
       <View style={styles.contentContainer}>
-        <View style={styles.headerContainer}>          <Text style={styles.title}>{log.type}</Text>
+        <View style={styles.headerContainer}>
+          <Text style={styles.title}>{log.type}</Text>
           <Text style={styles.cost}>₱{log.cost.toFixed(2)}</Text>
         </View>
         
