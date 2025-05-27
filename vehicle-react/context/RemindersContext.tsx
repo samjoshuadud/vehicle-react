@@ -53,7 +53,10 @@ export function RemindersProvider({ children }: RemindersProviderProps) {
       setOverdueReminders(overdue);
     } catch (error) {
       console.error('Failed to refresh reminders:', error);
-      // Don't show alert here as it might be called frequently
+      // Clear reminders on error to prevent stale data
+      setReminders([]);
+      setUpcomingReminders([]);
+      setOverdueReminders([]);
     } finally {
       setIsLoading(false);
     }
@@ -137,6 +140,7 @@ export function RemindersProvider({ children }: RemindersProviderProps) {
       setReminders([]);
       setUpcomingReminders([]);
       setOverdueReminders([]);
+      setIsLoading(false); // Ensure loading is false when not authenticated
     }
   }, [isAuthenticated, token]);
 

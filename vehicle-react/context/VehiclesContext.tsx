@@ -32,6 +32,11 @@ export const VehiclesProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     if (isAuthenticated && token) {
       refreshVehicles();
+    } else {
+      // Clear vehicles when not authenticated
+      setVehicles([]);
+      setCurrentVehicle(null);
+      setIsLoading(false); // Ensure loading is false when not authenticated
     }
   }, [isAuthenticated, token]);
 
@@ -52,7 +57,9 @@ export const VehiclesProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.log('VehiclesContext: Vehicles refreshed successfully');
     } catch (error) {
       console.error('VehiclesContext: Failed to refresh vehicles', error);
-      // Don't throw here, just log the error
+      // Clear vehicles on error to prevent stale data
+      setVehicles([]);
+      setCurrentVehicle(null);
     } finally {
       setIsLoading(false);
     }

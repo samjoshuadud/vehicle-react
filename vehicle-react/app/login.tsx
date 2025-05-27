@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { SafeArea } from '../components/ui/SafeArea';
@@ -12,6 +12,7 @@ import { SafeArea } from '../components/ui/SafeArea';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { statusBarStyle, backgroundColor } = useTheme();
   const { login } = useAuth();
@@ -25,7 +26,7 @@ export default function LoginScreen() {
     
     setIsLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       router.replace('/(tabs)');
     } catch (error: any) {
       Alert.alert('Login Failed', error.message || 'Invalid email or password');
@@ -71,6 +72,16 @@ export default function LoginScreen() {
               isPassword
               leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#6B7280" />}
             />
+
+            <View style={styles.rememberMeContainer}>
+              <Switch
+                value={rememberMe}
+                onValueChange={setRememberMe}
+                trackColor={{ false: '#D1D5DB', true: '#BFDBFE' }}
+                thumbColor={rememberMe ? '#3B82F6' : '#9CA3AF'}
+              />
+              <Text style={styles.rememberMeText}>Remember me</Text>
+            </View>
 
             <TouchableOpacity style={styles.forgotPassword}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
@@ -131,6 +142,17 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     marginBottom: 24,
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  rememberMeText: {
+    color: '#4B5563',
+    fontSize: 14,
+    marginLeft: 12,
   },
   forgotPassword: {
     alignSelf: 'flex-end',

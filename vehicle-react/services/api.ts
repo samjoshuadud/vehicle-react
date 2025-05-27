@@ -181,6 +181,37 @@ class ApiService {
     }
   }
 
+  async validateToken(token: string): Promise<boolean> {
+    try {
+      console.log('Validating token...');
+      const response = await fetch(`${this.baseUrl}/users/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Token validation response status:', response.status);
+      
+      if (response.status === 401 || response.status === 403) {
+        console.log('Token is invalid or expired');
+        return false;
+      }
+
+      if (!response.ok) {
+        console.log('Token validation failed with status:', response.status);
+        return false;
+      }
+
+      console.log('Token is valid');
+      return true;
+    } catch (error) {
+      console.error('Token validation network error:', error);
+      return false;
+    }
+  }
+
   // Vehicle management methods
   async getVehicles(token: string): Promise<Vehicle[]> {
     try {
@@ -196,9 +227,16 @@ class ApiService {
       console.log('Vehicles response status:', response.status);
 
       if (!response.ok) {
-        const error = await response.json();
-        console.error('Vehicles error:', error);
-        throw new Error(error.detail || 'Failed to get vehicles');
+        let errorMessage = 'Failed to get vehicles';
+        try {
+          const error = await response.json();
+          console.error('Vehicles error:', error);
+          errorMessage = error.detail || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response, likely HTML:', parseError);
+          errorMessage = response.status === 401 ? 'Authentication failed' : `Server error (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -658,9 +696,16 @@ class ApiService {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        console.error('Get reminders error:', error);
-        throw new Error(error.detail || 'Failed to fetch reminders');
+        let errorMessage = 'Failed to fetch reminders';
+        try {
+          const error = await response.json();
+          console.error('Get reminders error:', error);
+          errorMessage = error.detail || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response, likely HTML:', parseError);
+          errorMessage = response.status === 401 ? 'Authentication failed' : `Server error (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -688,9 +733,16 @@ class ApiService {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        console.error('Get upcoming reminders error:', error);
-        throw new Error(error.detail || 'Failed to fetch upcoming reminders');
+        let errorMessage = 'Failed to fetch upcoming reminders';
+        try {
+          const error = await response.json();
+          console.error('Get upcoming reminders error:', error);
+          errorMessage = error.detail || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response, likely HTML:', parseError);
+          errorMessage = response.status === 401 ? 'Authentication failed' : `Server error (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -718,9 +770,16 @@ class ApiService {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        console.error('Get overdue reminders error:', error);
-        throw new Error(error.detail || 'Failed to fetch overdue reminders');
+        let errorMessage = 'Failed to fetch overdue reminders';
+        try {
+          const error = await response.json();
+          console.error('Get overdue reminders error:', error);
+          errorMessage = error.detail || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response, likely HTML:', parseError);
+          errorMessage = response.status === 401 ? 'Authentication failed' : `Server error (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
