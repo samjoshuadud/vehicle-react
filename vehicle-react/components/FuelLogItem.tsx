@@ -11,32 +11,54 @@ type FuelLogCombined = Partial<APIFuelLog> & Partial<DummyFuelLog>;
 interface FuelLogItemProps {
   log: FuelLogCombined;
   onPress: () => void;
+  onLongPress?: () => void;
+  isDeleting?: boolean;
 }
 
-const FuelLogItem: React.FC<FuelLogItemProps> = ({ log, onPress }) => {
+const FuelLogItem: React.FC<FuelLogItemProps> = ({ 
+  log, 
+  onPress, 
+  onLongPress, 
+  isDeleting = false 
+}) => {
   const { currencySymbol } = useTheme();
   
   // Determine if this is an electric vehicle based on kwh field
-  const isElectric = log.kwh && log.kwh > 0;
-  const amount = isElectric ? log.kwh : log.liters;
+  const isElectric = log.kwh !== undefined && log.kwh !== null && log.kwh > 0;
+  
+  // Safely get amount - make sure we have valid values
+  let amount;
+  if (isElectric) {
+    amount = (log.kwh !== undefined && log.kwh !== null) ? Number(log.kwh) : undefined;
+  } else {
+    amount = (log.liters !== undefined && log.liters !== null) ? Number(log.liters) : undefined;
+  }
+  
   const unit = isElectric ? 'kWh' : 'L';
   const unitLabel = isElectric ? 'kWh' : 'liters';
   
   // Calculate price per unit - handle null/undefined cost and amount values
-  const pricePerUnit = (amount && amount > 0 && log.cost && typeof log.cost === 'number') 
+  const pricePerUnit = (amount !== undefined && amount > 0 && log.cost && typeof log.cost === 'number') 
     ? (log.cost / amount).toFixed(2) 
     : 'N/A';
   
   return (
     <TouchableOpacity 
-      style={styles.container} 
+      style={[
+        styles.container,
+        isDeleting && styles.deletingContainer
+      ]} 
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={500}
       activeOpacity={0.7}
     >
       <View style={styles.iconContainer}>
         <View style={styles.iconBackground}>
           <Ionicons 
-            name={(amount && amount > 0) ? (isElectric ? 'flash-outline' : 'water-outline') : 'flash-outline'} 
+            name={(amount !== undefined && amount > 0) 
+              ? (isElectric ? 'flash-outline' : 'water-outline') 
+              : (isElectric ? 'flash-outline' : 'water-outline')} 
             size={20} 
             color="#F59E0B" 
           />
@@ -46,7 +68,9 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({ log, onPress }) => {
       <View style={styles.contentContainer}>
         <View style={styles.headerContainer}>
           <Text style={styles.title}>
-            {(amount && amount > 0) ? `${amount.toFixed(1)} ${unitLabel}` : 'Charge'}
+            {(amount !== undefined && amount !== null) 
+              ? `${Number(amount).toFixed(1)} ${unitLabel}` 
+              : isElectric ? 'Charge' : 'Refuel'}
           </Text>
           <Text style={styles.cost}>
             {currencySymbol}{(log.cost && typeof log.cost === 'number') ? log.cost.toFixed(2) : '0.00'}
@@ -81,7 +105,7 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({ log, onPress }) => {
             <Text style={styles.detailText}>{log.location}</Text>
           </View>
           
-          {(amount && amount > 0) && (
+          {(amount !== undefined && amount > 0) && (
             <View style={styles.detailItem}>
               <Ionicons name="pricetag-outline" size={14} color="#6B7280" />
               <Text style={styles.detailText}>{currencySymbol}{pricePerUnit}/{unit}</Text>
@@ -121,6 +145,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  deletingContainer: {
+    backgroundColor: '#FEE2E2',
+    opacity: 0.7,
   },
   iconContainer: {
     marginRight: 12,

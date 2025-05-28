@@ -37,6 +37,7 @@ export default function VehicleDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [deletingMaintenanceId, setDeletingMaintenanceId] = useState<string | null>(null);
+  const [deletingFuelId, setDeletingFuelId] = useState<string | null>(null);
   const { statusBarStyle, backgroundColor } = useTheme();
   const { vehicles, refreshVehicles } = useVehicles();
   const { token } = useAuth();
@@ -102,8 +103,8 @@ export default function VehicleDetailScreen() {
           const logs = await apiService.getFuelLogs(token, parseInt(id));
           setFuelLogs(logs);
         } else if (activeTab === 'reminders') {
-          // Refresh reminders when switching to reminders tab
-          await refreshReminders();
+          // No need to refresh here - RemindersContext already handles loading
+          // Reminders are global, not vehicle-specific (until API is updated)
         }
       } catch (error: any) {
         console.error('Error loading logs:', error);
@@ -114,7 +115,7 @@ export default function VehicleDetailScreen() {
     };
 
     loadLogs();
-  }, [activeTab, id, vehicle, token, refreshReminders]);
+  }, [activeTab, id, vehicle, token]);
   
   // Handle if vehicle not found or loading
   if (isLoading) {
@@ -220,6 +221,71 @@ export default function VehicleDetailScreen() {
               Alert.alert('Error', error.message || 'Failed to delete maintenance log');
             } finally {
               setDeletingMaintenanceId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+  
+  const handleFuelLongPress = (log: FuelLog) => {
+    // Prevent multiple actions if currently deleting
+    if (deletingFuelId) return;
+    
+    // Determine if this is for an electric or gasoline vehicle
+    const fuelType = vehicle?.fuel_type === 'Electric' ? 'charging' : 'fuel';
+    
+    Alert.alert(
+      'Fuel Log Actions',
+      `What would you like to do with this ${fuelType} log?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Edit', onPress: () => handleEditLog(log.fuel_id.toString()) },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => handleDeleteFuel(log)
+        }
+      ]
+    );
+  };
+
+  const handleDeleteFuel = (log: FuelLog) => {
+    setDeletingFuelId(log.fuel_id.toString());
+    
+    // Determine if this is for an electric or gasoline vehicle
+    const fuelType = vehicle?.fuel_type === 'Electric' ? 'charging' : 'fuel';
+    
+    Alert.alert(
+      `Delete ${fuelType.charAt(0).toUpperCase() + fuelType.slice(1)} Log`,
+      `Are you sure you want to delete this ${fuelType} log? This action cannot be undone.`,
+      [
+        { 
+          text: 'Cancel', 
+          style: 'cancel',
+          onPress: () => setDeletingFuelId(null)
+        },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (!token) {
+                throw new Error('No authentication token');
+              }
+              await apiService.deleteFuelLog(token, log.fuel_id);
+              
+              // Remove the deleted log from the state
+              setFuelLogs(prevLogs => 
+                prevLogs.filter(l => l.fuel_id !== log.fuel_id)
+              );
+              
+              Alert.alert('Success', `${fuelType.charAt(0).toUpperCase() + fuelType.slice(1)} log deleted successfully`);
+            } catch (error: any) {
+              console.error(`Failed to delete ${fuelType} log:`, error);
+              Alert.alert('Error', error.message || `Failed to delete ${fuelType} log`);
+            } finally {
+              setDeletingFuelId(null);
             }
           }
         }
@@ -434,7 +500,9 @@ export default function VehicleDetailScreen() {
                       notes: log.notes || '',
                       isFull: log.full_tank || false // Use the actual full_tank value from the database
                     }} 
-                    onPress={() => handleEditLog(log.fuel_id.toString())} 
+                    onPress={() => handleEditLog(log.fuel_id.toString())}
+                    onLongPress={() => handleFuelLongPress(log)}
+                    isDeleting={deletingFuelId === log.fuel_id.toString()}
                   />
                 ))}
               </ScrollView>

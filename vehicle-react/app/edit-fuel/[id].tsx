@@ -154,38 +154,7 @@ export default function EditFuelLogScreen() {
     }
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete Fuel Log',
-      'Are you sure you want to delete this fuel log? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            if (!token) {
-              Alert.alert('Error', 'Authentication token not found');
-              return;
-            }
 
-            setIsLoading(true);
-            try {
-              await apiService.deleteFuelLog(token, fuel.fuel_id);
-              Alert.alert('Success', 'Fuel log deleted successfully', [
-                { text: 'OK', onPress: () => router.back() }
-              ]);
-            } catch (error: any) {
-              console.error('Failed to delete fuel log:', error);
-              Alert.alert('Error', error.message || 'Failed to delete fuel log');
-            } finally {
-              setIsLoading(false);
-            }
-          }
-        }
-      ]
-    );
-  };
 
   // Determine if this is an electric vehicle based on which field has data
   const isElectric = fuel ? (fuel.kwh !== null && fuel.kwh !== undefined && fuel.kwh > 0) : false;
@@ -296,14 +265,6 @@ export default function EditFuelLogScreen() {
               fullWidth
             />
           </View>
-          
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleDelete}
-          >
-            <Ionicons name="trash-outline" size={20} color="#EF4444" />
-            <Text style={styles.deleteButtonText}>{isElectric ? 'Delete Charging Log' : 'Delete Fuel Log'}</Text>
-          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeArea>
@@ -374,22 +335,6 @@ const styles = StyleSheet.create({
   buttonContainer: {
     marginTop: 24,
     marginBottom: 16,
-  },
-  deleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEF2F2',
-  },
-  deleteButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#EF4444',
   },
   switchContainer: {
     flexDirection: 'row',

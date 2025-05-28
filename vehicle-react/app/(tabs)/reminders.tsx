@@ -34,9 +34,10 @@ export default function RemindersScreen() {
   const { vehicles } = useVehicles();
   const [filterType, setFilterType] = useState<'all' | 'upcoming' | 'overdue'>('all');
   
-  useEffect(() => {
-    refreshReminders();
-  }, []);
+  // No need for useEffect here - RemindersContext handles initial loading
+  // useEffect(() => {
+  //   refreshReminders();
+  // }, [refreshReminders]);
   
   // Get filtered reminders based on selected filter and transform them
   const getFilteredReminders = () => {

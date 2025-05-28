@@ -66,7 +66,6 @@ export default function AddReminderScreen() {
     setIsLoading(true);
     try {
       await createReminder({
-        user_id: 1, // This should be from auth context
         title,
         description,
         due_date: date,

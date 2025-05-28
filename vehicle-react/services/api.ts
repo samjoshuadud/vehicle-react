@@ -682,6 +682,7 @@ class ApiService {
   // Create reminder
   async createReminder(token: string, reminderData: Partial<Reminder>): Promise<Reminder> {
     try {
+      console.log('Creating reminder with data:', reminderData);
       const response = await fetch(`${this.baseUrl}/reminders/`, {
         method: 'POST',
         headers: {
@@ -691,14 +692,26 @@ class ApiService {
         body: JSON.stringify(reminderData),
       });
 
+      console.log('Create reminder response status:', response.status);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to create reminder');
+        let errorMessage = 'Failed to create reminder';
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || errorMessage;
+        } catch (parseError) {
+          // If response is not JSON (like HTML error page), use status-based message
+          errorMessage = response.status === 401 ? 'Authentication failed' : `Server error (${response.status})`;
+          console.log('Failed to parse error response as JSON:', parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
+      console.log('Successfully created reminder:', result);
       return result;
     } catch (error) {
+      console.error('Error in createReminder:', error);
       if (error instanceof Error) {
         throw error;
       }

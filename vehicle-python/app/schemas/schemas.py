@@ -103,7 +103,7 @@ class ReminderBase(BaseModel):
     repeat_interval: Optional[str] = None
 
 class ReminderCreate(ReminderBase):
-    user_id: int
+    pass
 
 class ReminderUpdate(ReminderBase):
     pass
