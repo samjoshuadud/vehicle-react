@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -22,6 +22,7 @@ export default function EditFuelLogScreen() {
   const [cost, setCost] = useState('');
   const [mileage, setMileage] = useState('');
   const [location, setLocation] = useState('');
+  const [isFull, setIsFull] = useState(true);
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -34,10 +35,18 @@ export default function EditFuelLogScreen() {
         const fuelData = await apiService.getFuelById(token, parseInt(id));
         setFuel(fuelData);
         setDate(fuelData.date);
-        setLiters(fuelData.fuel_amount.toString());
+        // Check if this is electric (has kwh) or gasoline (has liters)
+        if (fuelData.kwh !== null && fuelData.kwh !== undefined) {
+          setLiters(fuelData.kwh.toString());
+        } else if (fuelData.liters !== null && fuelData.liters !== undefined) {
+          setLiters(fuelData.liters.toString());
+        } else {
+          setLiters('');
+        }
         setCost(fuelData.cost.toString());
-        setMileage(fuelData.mileage.toString());
+        setMileage(fuelData.odometer_reading.toString());
         setLocation(fuelData.location || '');
+        setIsFull(fuelData.full_tank || false);
         setNotes(fuelData.notes || '');
       } catch (error: any) {
         console.error('Failed to load fuel log:', error);
@@ -106,7 +115,7 @@ export default function EditFuelLogScreen() {
     }
 
     // Validate fuel amount if provided
-    let fuelAmount = 0;
+    let fuelAmount: number | undefined = undefined;
     if (liters) {
       fuelAmount = parseFloat(liters);
       if (isNaN(fuelAmount) || fuelAmount <= 0) {
@@ -124,10 +133,12 @@ export default function EditFuelLogScreen() {
     try {
       const updatedData: Partial<FuelLog> = {
         date,
-        mileage: mileageNum,
-        fuel_amount: fuelAmount,
+        odometer_reading: mileageNum,
+        liters: (!isElectric && fuelAmount !== undefined) ? fuelAmount : undefined,
+        kwh: (isElectric && fuelAmount !== undefined) ? fuelAmount : undefined,
         cost: costNum,
         location: location || undefined,
+        full_tank: isFull,
         notes: notes || undefined,
       };
 
@@ -176,8 +187,8 @@ export default function EditFuelLogScreen() {
     );
   };
 
-  // Determine if this is an electric vehicle
-  const isElectric = fuel?.fuel_type === 'Electric';
+  // Determine if this is an electric vehicle based on which field has data
+  const isElectric = fuel ? (fuel.kwh !== null && fuel.kwh !== undefined && fuel.kwh > 0) : false;
 
   return (
     <SafeArea style={styles.container} statusBarColor={backgroundColor}>
@@ -254,6 +265,18 @@ export default function EditFuelLogScreen() {
             onChangeText={setLocation}
             leftIcon={<Ionicons name="location-outline" size={20} color="#6B7280" />}
           />
+          
+          <View style={styles.switchContainer}>
+            <Text style={styles.switchLabel}>
+              {isElectric ? 'Full Charge' : 'Full Tank'}
+            </Text>
+            <Switch
+              value={isFull}
+              onValueChange={setIsFull}
+              trackColor={{ false: '#D1D5DB', true: '#BFDBFE' }}
+              thumbColor={isFull ? '#3B82F6' : '#9CA3AF'}
+            />
+          </View>
           
           <Input
             label="Notes"
@@ -367,5 +390,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#EF4444',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  switchLabel: {
+    fontSize: 16,
+    color: '#4B5563',
   },
 });

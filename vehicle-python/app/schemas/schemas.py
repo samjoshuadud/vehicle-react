@@ -75,6 +75,7 @@ class Maintenance(MaintenanceBase):
 class FuelBase(BaseModel):
     date: date
     liters: Optional[Decimal] = Field(None, decimal_places=2)
+    kwh: Optional[Decimal] = Field(None, decimal_places=2)  # For electric vehicles
     cost: Optional[Decimal] = Field(None, decimal_places=2)
     odometer_reading: Optional[int] = None
     location: Optional[str] = None

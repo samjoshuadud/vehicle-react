@@ -29,6 +29,7 @@ export interface FuelLog {
   vehicleId: string;
   date: string;
   liters: number;
+  kwh?: number;  // For electric vehicles
   cost: number;
   mileage: number;
   location: string;

@@ -92,11 +92,12 @@ export default function AddFuelLogScreen() {
       const fuelData: Partial<FuelLog> = {
         vehicle_id: vehicle.vehicle_id,
         date,
-        mileage: mileageNum,
-        fuel_amount: liters ? parseFloat(liters) : 0,
+        odometer_reading: mileageNum,
+        liters: (!isElectric && liters) ? parseFloat(liters) : undefined,
+        kwh: (isElectric && liters) ? parseFloat(liters) : undefined,
         cost: costNum,
-        fuel_type: vehicle.fuel_type,
         location: location || undefined,
+        full_tank: isFull,
         notes: notes || undefined,
       };
 

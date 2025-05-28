@@ -1,20 +1,30 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { FuelLog } from '../data/dummyData';
+import { FuelLog as APIFuelLog } from '@/services/api';
+import { FuelLog as DummyFuelLog } from '../data/dummyData';
 import { useTheme } from '@/context/ThemeContext';
 
+// Combined interface that accepts both API and UI formats
+type FuelLogCombined = Partial<APIFuelLog> & Partial<DummyFuelLog>;
+
 interface FuelLogItemProps {
-  log: FuelLog;
+  log: FuelLogCombined;
   onPress: () => void;
 }
 
 const FuelLogItem: React.FC<FuelLogItemProps> = ({ log, onPress }) => {
   const { currencySymbol } = useTheme();
   
-  // Calculate price per liter - handle null/undefined cost values
-  const pricePerLiter = (log.liters > 0 && log.cost && typeof log.cost === 'number') 
-    ? (log.cost / log.liters).toFixed(2) 
+  // Determine if this is an electric vehicle based on kwh field
+  const isElectric = log.kwh && log.kwh > 0;
+  const amount = isElectric ? log.kwh : log.liters;
+  const unit = isElectric ? 'kWh' : 'L';
+  const unitLabel = isElectric ? 'kWh' : 'liters';
+  
+  // Calculate price per unit - handle null/undefined cost and amount values
+  const pricePerUnit = (amount && amount > 0 && log.cost && typeof log.cost === 'number') 
+    ? (log.cost / amount).toFixed(2) 
     : 'N/A';
   
   return (
@@ -26,7 +36,7 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({ log, onPress }) => {
       <View style={styles.iconContainer}>
         <View style={styles.iconBackground}>
           <Ionicons 
-            name={log.liters === 0 ? 'flash-outline' : 'water-outline'} 
+            name={(amount && amount > 0) ? (isElectric ? 'flash-outline' : 'water-outline') : 'flash-outline'} 
             size={20} 
             color="#F59E0B" 
           />
@@ -36,7 +46,7 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({ log, onPress }) => {
       <View style={styles.contentContainer}>
         <View style={styles.headerContainer}>
           <Text style={styles.title}>
-            {log.liters > 0 ? `${log.liters.toFixed(1)} liters` : 'Charge'}
+            {(amount && amount > 0) ? `${amount.toFixed(1)} ${unitLabel}` : 'Charge'}
           </Text>
           <Text style={styles.cost}>
             {currencySymbol}{(log.cost && typeof log.cost === 'number') ? log.cost.toFixed(2) : '0.00'}
@@ -47,17 +57,23 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({ log, onPress }) => {
           <View style={styles.detailItem}>
             <Ionicons name="calendar-outline" size={14} color="#6B7280" />
             <Text style={styles.detailText}>
-              {new Date(log.date).toLocaleDateString('en-US', {
+              {log.date ? new Date(log.date).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric'
-              })}
+              }) : 'N/A'}
             </Text>
           </View>
           
           <View style={styles.detailItem}>
             <Ionicons name="speedometer-outline" size={14} color="#6B7280" />
-            <Text style={styles.detailText}>{log.mileage.toLocaleString()} km</Text>
+            <Text style={styles.detailText}>
+              {(log.mileage !== undefined && log.mileage !== null) 
+                ? log.mileage.toLocaleString() 
+                : (log.odometer_reading !== undefined && log.odometer_reading !== null) 
+                  ? log.odometer_reading.toLocaleString() 
+                  : '0'} km
+            </Text>
           </View>
           
           <View style={styles.detailItem}>
@@ -65,10 +81,10 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({ log, onPress }) => {
             <Text style={styles.detailText}>{log.location}</Text>
           </View>
           
-          {log.liters > 0 && (
+          {(amount && amount > 0) && (
             <View style={styles.detailItem}>
               <Ionicons name="pricetag-outline" size={14} color="#6B7280" />
-              <Text style={styles.detailText}>{currencySymbol}{pricePerLiter}/L</Text>
+              <Text style={styles.detailText}>{currencySymbol}{pricePerUnit}/{unit}</Text>
             </View>
           )}
         </View>
@@ -79,9 +95,9 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({ log, onPress }) => {
           </View>
         )}
         
-        {log.isFull && (
+        {((log.isFull !== undefined ? log.isFull : log.full_tank) === true) && (
           <View style={styles.tagContainer}>
-            <Text style={styles.tagText}>Full Tank</Text>
+            <Text style={styles.tagText}>{isElectric ? 'Full Charge' : 'Full Tank'}</Text>
           </View>
         )}
       </View>

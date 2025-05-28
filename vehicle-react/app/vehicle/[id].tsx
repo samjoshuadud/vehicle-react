@@ -426,12 +426,13 @@ export default function VehicleDetailScreen() {
                       id: log.fuel_id.toString(),
                       vehicleId: log.vehicle_id.toString(),
                       date: log.date,
-                      mileage: log.mileage,
-                      liters: log.fuel_amount,
+                      mileage: log.odometer_reading || 0,
+                      liters: (vehicle?.fuel_type === 'Electric') ? (log.kwh || 0) : (log.liters || 0),
+                      kwh: log.kwh || 0,
                       cost: typeof log.cost === 'number' ? log.cost : (log.cost ? parseFloat(String(log.cost)) : 0),
                       location: log.location || '',
                       notes: log.notes || '',
-                      isFull: true // Backend doesn't have this field yet
+                      isFull: log.full_tank || false // Use the actual full_tank value from the database
                     }} 
                     onPress={() => handleEditLog(log.fuel_id.toString())} 
                   />
