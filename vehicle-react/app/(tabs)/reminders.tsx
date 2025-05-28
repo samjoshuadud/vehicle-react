@@ -76,36 +76,50 @@ export default function RemindersScreen() {
   };
 
   const handleReminderLongPress = (reminderId: string) => {
-    const reminder = filteredReminders.find(r => r.id === reminderId);
-    if (!reminder) return;
-
     Alert.alert(
-      'Delete Reminder',
-      `Are you sure you want to delete "${reminder.title}"?`,
+      'Reminder Actions',
+      'What would you like to do with this reminder?',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Edit', onPress: () => router.push(`/edit-reminder/${reminderId}`) },
+        { 
+          text: 'Delete', 
           style: 'destructive',
-          onPress: () => handleDeleteReminder(reminderId),
-        },
+          onPress: () => handleDeleteReminder(reminderId)
+        }
       ]
     );
   };
 
-  const handleDeleteReminder = async (reminderId: string) => {
+  const handleDeleteReminder = (reminderId: string) => {
     setDeletingReminderId(reminderId);
-    try {
-      await deleteReminder(parseInt(reminderId));
-    } catch (error) {
-      console.error('Error deleting reminder:', error);
-      Alert.alert('Error', 'Failed to delete reminder. Please try again.');
-    } finally {
-      setDeletingReminderId(null);
-    }
+    
+    Alert.alert(
+      'Delete Reminder',
+      'Are you sure you want to delete this reminder? This action cannot be undone.',
+      [
+        { 
+          text: 'Cancel', 
+          style: 'cancel',
+          onPress: () => setDeletingReminderId(null)
+        },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteReminder(parseInt(reminderId, 10));
+              // No need to call refreshReminders as the deleteReminder function already does that
+            } catch (error) {
+              console.error('Error deleting reminder:', error);
+              Alert.alert('Error', 'Failed to delete reminder. Please try again.');
+            } finally {
+              setDeletingReminderId(null);
+            }
+          }
+        }
+      ]
+    );
   };
   
   const getVehicleName = (vehicleId: string) => {
