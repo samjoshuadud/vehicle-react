@@ -12,16 +12,22 @@ import { Reminder as APIReminder } from '@/services/api';
 import { Reminder as UIReminder } from '@/data/dummyData';
 
 // Transform API reminder to UI reminder format
-const transformReminder = (apiReminder: APIReminder): UIReminder => ({
-  id: apiReminder.reminder_id.toString(),
-  vehicleId: apiReminder.vehicle_id.toString(), // Now using vehicle_id from the updated API
-  title: apiReminder.title,
-  description: apiReminder.description || '',
-  date: apiReminder.due_date,
-  isCompleted: false, // API doesn't have this field yet
-  repeatInterval: apiReminder.repeat_interval as any || 'none',
-  mileageInterval: apiReminder.mileage_interval, // Include mileage interval
-});
+const transformReminder = (apiReminder: APIReminder): UIReminder => {
+  // Add debug logging
+  console.log('API Reminder:', apiReminder);
+  console.log('Vehicle ID:', apiReminder.vehicle_id);
+  
+  return {
+    id: apiReminder.reminder_id.toString(),
+    vehicleId: apiReminder.vehicle_id?.toString() || '', // Use vehicle_id, fallback to empty string
+    title: apiReminder.title,
+    description: apiReminder.description || '',
+    date: apiReminder.due_date,
+    isCompleted: false, // API doesn't have this field yet
+    repeatInterval: apiReminder.repeat_interval as any || 'none',
+    mileageInterval: apiReminder.mileage_interval || 0,
+  };
+};
 
 export default function RemindersScreen() {
   const { statusBarStyle, backgroundColor } = useTheme();

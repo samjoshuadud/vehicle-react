@@ -112,6 +112,7 @@ class ReminderUpdate(ReminderBase):
 class Reminder(ReminderBase):
     reminder_id: int
     user_id: int
+    vehicle_id: int
 
     class Config:
         from_attributes = True

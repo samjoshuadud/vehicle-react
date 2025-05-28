@@ -51,12 +51,15 @@ export interface FuelLog {
 
 export interface Reminder {
   reminder_id: number;
-  user_id: number;
   title: string;
-  description?: string;
+  description: string | null;
   due_date: string;
-  repeat_interval?: string;
-  mileage_interval?: number;
+  repeat_interval: string | null;
+  mileage_interval: number | null;
+  user_id: number;
+  vehicle_id: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface LoginRequest {
