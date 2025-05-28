@@ -1,7 +1,9 @@
-import React from 'react';
-import { StyleSheet, TouchableOpacity, Image, View, Text } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, TouchableOpacity, Image, View, Text, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Vehicle } from '../services/api';
+import { useVehicles } from '../context/VehiclesContext';
+import { router } from 'expo-router';
 
 interface VehicleCardProps {
   vehicle: Vehicle;
@@ -10,12 +12,79 @@ interface VehicleCardProps {
 
 const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onPress }) => {
   const defaultImage = 'https://via.placeholder.com/300x200/E5E7EB/6B7280?text=Vehicle';
+  const { deleteVehicle } = useVehicles();
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  const handlePress = () => {
+    // Prevent navigation if currently deleting
+    if (isDeleting) return;
+    onPress();
+  };
+  
+  const handleLongPress = () => {
+    // Prevent multiple actions if currently deleting
+    if (isDeleting) return;
+    
+    Alert.alert(
+      'Vehicle Actions',
+      `What would you like to do with ${vehicle.year} ${vehicle.make} ${vehicle.model}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Edit', onPress: () => router.push(`/edit-vehicle/${vehicle.vehicle_id}`) },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => handleDelete()
+        }
+      ]
+    );
+  };
+
+  const handleDelete = () => {
+    setIsDeleting(true);
+    Alert.alert(
+      'Delete Vehicle',
+      `Are you sure you want to delete ${vehicle.year} ${vehicle.make} ${vehicle.model}? This action cannot be undone.`,
+      [
+        { 
+          text: 'Cancel', 
+          style: 'cancel',
+          onPress: () => setIsDeleting(false)
+        },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteVehicle(vehicle.vehicle_id);
+              // Clear any navigation stack that might reference this vehicle
+              if (router.canGoBack()) {
+                router.dismissAll();
+              }
+              // Navigate to main dashboard to ensure clean state
+              router.replace('/(tabs)');
+              // Small delay before showing success message
+              setTimeout(() => {
+                Alert.alert('Success', 'Vehicle deleted successfully');
+              }, 200);
+            } catch (error: any) {
+              console.error('Failed to delete vehicle:', error);
+              Alert.alert('Error', error.message || 'Failed to delete vehicle');
+              setIsDeleting(false);
+            }
+          }
+        }
+      ]
+    );
+  };
   
   return (
     <TouchableOpacity 
-      style={styles.card} 
-      onPress={onPress}
+      style={[styles.card, isDeleting && styles.cardDeleting]} 
+      onPress={handlePress}
+      onLongPress={handleLongPress}
       activeOpacity={0.7}
+      disabled={isDeleting}
     >
       <Image 
         source={{ uri: vehicle.vehicle_image || defaultImage }} 
@@ -57,7 +126,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onPress }) => {
         </View>
       </View>
       <View style={styles.arrowContainer}>
-        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        <Ionicons name="ellipsis-vertical" size={20} color="#9CA3AF" />
       </View>
     </TouchableOpacity>
   );
@@ -75,6 +144,9 @@ const styles = StyleSheet.create({
     elevation: 2,
     flexDirection: 'row',
     overflow: 'hidden',
+  },
+  cardDeleting: {
+    opacity: 0.5,
   },
   image: {
     width: 100,

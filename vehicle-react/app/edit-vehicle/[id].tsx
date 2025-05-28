@@ -17,7 +17,7 @@ import { Vehicle } from '@/services/api';
 export default function EditVehicleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { statusBarStyle, backgroundColor } = useTheme();
-  const { vehicles, updateVehicle, deleteVehicle } = useVehicles();
+  const { vehicles, updateVehicle } = useVehicles();
   const { token } = useAuth();
   
   // Find the vehicle based on the ID
@@ -122,38 +122,6 @@ export default function EditVehicleScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleDelete = () => {
-    if (!vehicle?.vehicle_id) {
-      Alert.alert('Error', 'Vehicle ID not found');
-      return;
-    }
-
-    Alert.alert(
-      'Delete Vehicle',
-      'Are you sure you want to delete this vehicle? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            setIsLoading(true);
-            try {
-              await deleteVehicle(vehicle.vehicle_id!);
-              Alert.alert('Success', 'Vehicle deleted successfully', [
-                { text: 'OK', onPress: () => router.replace('/(tabs)') }
-              ]);
-            } catch (error: any) {
-              console.error('Failed to delete vehicle:', error);
-              Alert.alert('Error', error.message || 'Failed to delete vehicle');
-              setIsLoading(false);
-            }
-          }
-        }
-      ]
-    );
   };
 
   const pickImage = async () => {
@@ -313,14 +281,6 @@ export default function EditVehicleScreen() {
               fullWidth
             />
           </View>
-          
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleDelete}
-          >
-            <Ionicons name="trash-outline" size={20} color="#EF4444" />
-            <Text style={styles.deleteButtonText}>Delete Vehicle</Text>
-          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeArea>
@@ -414,20 +374,14 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 16,
   },
-  deleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
   },
-  deleteButtonText: {
-    marginLeft: 8,
+  loadingText: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#EF4444',
+    color: '#6B7280',
+    marginTop: 16,
   },
 });

@@ -55,8 +55,27 @@ export default function VehicleDetailScreen() {
           setVehicle(contextVehicle);
         } else {
           // If not found in context, fetch from API
-          const vehicleData = await apiService.getVehicleById(token, parseInt(id));
-          setVehicle(vehicleData);
+          try {
+            const vehicleData = await apiService.getVehicleById(token, parseInt(id));
+            setVehicle(vehicleData);
+          } catch (apiError: any) {
+            console.error('Vehicle not found in API:', apiError);
+            // Vehicle doesn't exist, navigate back to dashboard
+            Alert.alert(
+              'Vehicle Not Found', 
+              'This vehicle no longer exists.',
+              [
+                { 
+                  text: 'OK', 
+                  onPress: () => {
+                    router.dismissAll();
+                    router.replace('/(tabs)');
+                  }
+                }
+              ]
+            );
+            return;
+          }
         }
       } catch (error: any) {
         console.error('Error loading vehicle:', error);
