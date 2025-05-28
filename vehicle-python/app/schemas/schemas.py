@@ -104,7 +104,7 @@ class ReminderBase(BaseModel):
     mileage_interval: Optional[int] = None  # New field for mileage-based reminders
 
 class ReminderCreate(ReminderBase):
-    pass
+    vehicle_id: int
 
 class ReminderUpdate(ReminderBase):
     pass

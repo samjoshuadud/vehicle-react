@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -36,10 +36,12 @@ export default function RemindersScreen() {
     upcomingReminders, 
     overdueReminders, 
     isLoading, 
-    refreshReminders 
+    refreshReminders,
+    deleteReminder
   } = useReminders();
   const { vehicles } = useVehicles();
   const [filterType, setFilterType] = useState<'all' | 'upcoming' | 'overdue'>('all');
+  const [deletingReminderId, setDeletingReminderId] = useState<string | null>(null);
   
   // No need for useEffect here - RemindersContext handles initial loading
   // useEffect(() => {
@@ -71,6 +73,39 @@ export default function RemindersScreen() {
   
   const handleEditReminder = (reminderId: string) => {
     router.push(`/edit-reminder/${reminderId}`);
+  };
+
+  const handleReminderLongPress = (reminderId: string) => {
+    const reminder = filteredReminders.find(r => r.id === reminderId);
+    if (!reminder) return;
+
+    Alert.alert(
+      'Delete Reminder',
+      `Are you sure you want to delete "${reminder.title}"?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => handleDeleteReminder(reminderId),
+        },
+      ]
+    );
+  };
+
+  const handleDeleteReminder = async (reminderId: string) => {
+    setDeletingReminderId(reminderId);
+    try {
+      await deleteReminder(parseInt(reminderId));
+    } catch (error) {
+      console.error('Error deleting reminder:', error);
+      Alert.alert('Error', 'Failed to delete reminder. Please try again.');
+    } finally {
+      setDeletingReminderId(null);
+    }
   };
   
   const getVehicleName = (vehicleId: string) => {
@@ -165,6 +200,8 @@ export default function RemindersScreen() {
               reminder={item}
               onPress={() => handleEditReminder(item.id)}
               onToggleComplete={() => handleToggleReminder(item.id)}
+              onLongPress={() => handleReminderLongPress(item.id)}
+              isDeleting={deletingReminderId === item.id}
             />
           </View>
         )}

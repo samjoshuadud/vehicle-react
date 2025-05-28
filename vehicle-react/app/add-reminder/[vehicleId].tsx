@@ -70,6 +70,7 @@ export default function AddReminderScreen() {
         description,
         due_date: date,
         repeat_interval: repeatInterval === 'none' ? undefined : repeatInterval,
+        vehicle_id: parseInt(vehicleId!, 10),  // Add vehicle_id from URL parameter
       };
 
       // Add mileage_interval if repeat interval is mileage
