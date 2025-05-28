@@ -3,7 +3,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
-
 import FuelLogItem from '@/components/FuelLogItem';
 import MaintenanceLogItem from '@/components/MaintenanceLogItem';
 import ReminderItem from '@/components/ReminderItem';
@@ -37,6 +36,7 @@ export default function VehicleDetailScreen() {
   const [fuelLogs, setFuelLogs] = useState<FuelLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [deletingMaintenanceId, setDeletingMaintenanceId] = useState<string | null>(null);
   const { statusBarStyle, backgroundColor } = useTheme();
   const { vehicles, refreshVehicles } = useVehicles();
   const { token } = useAuth();
@@ -167,6 +167,64 @@ export default function VehicleDetailScreen() {
   const handleToggleReminder = (reminderId: string) => {
     // In a real app, this would update the reminder's completion status
     console.log(`Toggle reminder ${reminderId}`);
+  };
+
+  const handleMaintenanceLongPress = (log: MaintenanceLog) => {
+    // Prevent multiple actions if currently deleting
+    if (deletingMaintenanceId) return;
+    
+    Alert.alert(
+      'Maintenance Log Actions',
+      `What would you like to do with this ${log.type} maintenance?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Edit', onPress: () => handleEditLog(log.maintenance_id.toString()) },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => handleDeleteMaintenance(log)
+        }
+      ]
+    );
+  };
+
+  const handleDeleteMaintenance = (log: MaintenanceLog) => {
+    setDeletingMaintenanceId(log.maintenance_id.toString());
+    Alert.alert(
+      'Delete Maintenance Log',
+      `Are you sure you want to delete this ${log.type} maintenance log? This action cannot be undone.`,
+      [
+        { 
+          text: 'Cancel', 
+          style: 'cancel',
+          onPress: () => setDeletingMaintenanceId(null)
+        },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (!token) {
+                throw new Error('No authentication token');
+              }
+              await apiService.deleteMaintenanceLog(token, log.maintenance_id);
+              
+              // Remove the deleted log from the state
+              setMaintenanceLogs(prevLogs => 
+                prevLogs.filter(l => l.maintenance_id !== log.maintenance_id)
+              );
+              
+              Alert.alert('Success', 'Maintenance log deleted successfully');
+            } catch (error: any) {
+              console.error('Failed to delete maintenance log:', error);
+              Alert.alert('Error', error.message || 'Failed to delete maintenance log');
+            } finally {
+              setDeletingMaintenanceId(null);
+            }
+          }
+        }
+      ]
+    );
   };
   
   return (
@@ -329,11 +387,13 @@ export default function VehicleDetailScreen() {
                       description: log.description,
                       date: log.date,
                       mileage: log.mileage,
-                      cost: log.cost,
+                      cost: typeof log.cost === 'number' ? log.cost : (log.cost ? parseFloat(String(log.cost)) : 0),
                       location: log.location || '',
                       notes: log.notes || ''
                     }} 
-                    onPress={() => handleEditLog(log.maintenance_id.toString())} 
+                    onPress={() => handleEditLog(log.maintenance_id.toString())}
+                    onLongPress={() => handleMaintenanceLongPress(log)}
+                    isDeleting={deletingMaintenanceId === log.maintenance_id.toString()}
                   />
                 ))}
               </ScrollView>
@@ -368,7 +428,7 @@ export default function VehicleDetailScreen() {
                       date: log.date,
                       mileage: log.mileage,
                       liters: log.fuel_amount,
-                      cost: log.cost,
+                      cost: typeof log.cost === 'number' ? log.cost : (log.cost ? parseFloat(String(log.cost)) : 0),
                       location: log.location || '',
                       notes: log.notes || '',
                       isFull: true // Backend doesn't have this field yet

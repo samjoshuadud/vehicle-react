@@ -6,14 +6,30 @@ import { MaintenanceLog } from '../data/dummyData';
 interface MaintenanceLogItemProps {
   log: MaintenanceLog;
   onPress: () => void;
+  onLongPress?: () => void;
+  isDeleting?: boolean;
 }
 
-const MaintenanceLogItem: React.FC<MaintenanceLogItemProps> = ({ log, onPress }) => {
+const MaintenanceLogItem: React.FC<MaintenanceLogItemProps> = ({ log, onPress, onLongPress, isDeleting = false }) => {
+  const handlePress = () => {
+    // Prevent navigation if currently deleting
+    if (isDeleting) return;
+    onPress();
+  };
+
+  const handleLongPress = () => {
+    // Prevent multiple actions if currently deleting
+    if (isDeleting || !onLongPress) return;
+    onLongPress();
+  };
+
   return (
     <TouchableOpacity 
-      style={styles.container} 
-      onPress={onPress}
+      style={[styles.container, isDeleting && styles.containerDeleting]} 
+      onPress={handlePress}
+      onLongPress={handleLongPress}
       activeOpacity={0.7}
+      disabled={isDeleting}
     >
       <View style={styles.iconContainer}>
         <View style={styles.iconBackground}>
@@ -24,7 +40,9 @@ const MaintenanceLogItem: React.FC<MaintenanceLogItemProps> = ({ log, onPress })
       <View style={styles.contentContainer}>
         <View style={styles.headerContainer}>
           <Text style={styles.title}>{log.type}</Text>
-          <Text style={styles.cost}>₱{log.cost.toFixed(2)}</Text>
+          <Text style={styles.cost}>
+            ₱{(log.cost && typeof log.cost === 'number') ? log.cost.toFixed(2) : '0.00'}
+          </Text>
         </View>
         
         <Text style={styles.description}>{log.description}</Text>
@@ -78,6 +96,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  containerDeleting: {
+    opacity: 0.5,
   },
   iconContainer: {
     marginRight: 12,

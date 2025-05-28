@@ -12,8 +12,10 @@ interface FuelLogItemProps {
 const FuelLogItem: React.FC<FuelLogItemProps> = ({ log, onPress }) => {
   const { currencySymbol } = useTheme();
   
-  // Calculate price per liter
-  const pricePerLiter = log.liters > 0 ? (log.cost / log.liters).toFixed(2) : 'N/A';
+  // Calculate price per liter - handle null/undefined cost values
+  const pricePerLiter = (log.liters > 0 && log.cost && typeof log.cost === 'number') 
+    ? (log.cost / log.liters).toFixed(2) 
+    : 'N/A';
   
   return (
     <TouchableOpacity 
@@ -36,7 +38,9 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({ log, onPress }) => {
           <Text style={styles.title}>
             {log.liters > 0 ? `${log.liters.toFixed(1)} liters` : 'Charge'}
           </Text>
-          <Text style={styles.cost}>{currencySymbol}{log.cost.toFixed(2)}</Text>
+          <Text style={styles.cost}>
+            {currencySymbol}{(log.cost && typeof log.cost === 'number') ? log.cost.toFixed(2) : '0.00'}
+          </Text>
         </View>
         
         <View style={styles.detailsContainer}>
