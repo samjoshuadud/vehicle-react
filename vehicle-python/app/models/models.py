@@ -37,6 +37,7 @@ class Vehicle(Base):
     owner = relationship("User", back_populates="vehicles")
     maintenance_logs = relationship("Maintenance", back_populates="vehicle", cascade="all, delete")
     fuel_logs = relationship("Fuel", back_populates="vehicle", cascade="all, delete")
+    reminders = relationship("Reminder", back_populates="vehicle", cascade="all, delete")
 
 class Maintenance(Base):
     __tablename__ = "Maintenance_Info"
@@ -76,10 +77,13 @@ class Reminder(Base):
 
     reminder_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('Users.user_id', ondelete='CASCADE'), nullable=False)
+    vehicle_id = Column(Integer, ForeignKey('Vehicles_Info.vehicle_id', ondelete='CASCADE'), nullable=False)
     title = Column(String(100), nullable=False)
     description = Column(Text)
     due_date = Column(Date, nullable=False)
     repeat_interval = Column(String(50))
+    mileage_interval = Column(Integer)  # New field for mileage-based reminders
 
-    # Relationship
+    # Relationships
     user = relationship("User", back_populates="reminders")
+    vehicle = relationship("Vehicle", back_populates="reminders")

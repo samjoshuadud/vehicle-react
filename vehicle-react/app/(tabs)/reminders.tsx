@@ -14,12 +14,13 @@ import { Reminder as UIReminder } from '@/data/dummyData';
 // Transform API reminder to UI reminder format
 const transformReminder = (apiReminder: APIReminder): UIReminder => ({
   id: apiReminder.reminder_id.toString(),
-  vehicleId: apiReminder.user_id.toString(), // This needs to be fixed in the API
+  vehicleId: apiReminder.vehicle_id.toString(), // Now using vehicle_id from the updated API
   title: apiReminder.title,
   description: apiReminder.description || '',
   date: apiReminder.due_date,
   isCompleted: false, // API doesn't have this field yet
   repeatInterval: apiReminder.repeat_interval as any || 'none',
+  mileageInterval: apiReminder.mileage_interval, // Include mileage interval
 });
 
 export default function RemindersScreen() {

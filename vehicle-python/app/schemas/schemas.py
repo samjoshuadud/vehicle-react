@@ -101,6 +101,7 @@ class ReminderBase(BaseModel):
     description: Optional[str] = None
     due_date: date
     repeat_interval: Optional[str] = None
+    mileage_interval: Optional[int] = None  # New field for mileage-based reminders
 
 class ReminderCreate(ReminderBase):
     pass

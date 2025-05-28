@@ -38,10 +38,11 @@ export default function VehicleDetailScreen() {
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [deletingMaintenanceId, setDeletingMaintenanceId] = useState<string | null>(null);
   const [deletingFuelId, setDeletingFuelId] = useState<string | null>(null);
+  const [deletingReminderId, setDeletingReminderId] = useState<string | null>(null);
   const { statusBarStyle, backgroundColor } = useTheme();
   const { vehicles, refreshVehicles } = useVehicles();
   const { token } = useAuth();
-  const { reminders, isLoading: isLoadingReminders, refreshReminders } = useReminders();
+  const { reminders, isLoading: isLoadingReminders, refreshReminders, deleteReminder } = useReminders();
 
   // Find the vehicle from context first, then fetch details if needed
   useEffect(() => {
@@ -286,6 +287,60 @@ export default function VehicleDetailScreen() {
               Alert.alert('Error', error.message || `Failed to delete ${fuelType} log`);
             } finally {
               setDeletingFuelId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+  
+  const handleReminderLongPress = (reminderId: string) => {
+    // Prevent multiple actions if currently deleting
+    if (deletingReminderId) return;
+    
+    Alert.alert(
+      'Reminder Actions',
+      'What would you like to do with this reminder?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Edit', onPress: () => handleEditLog(reminderId) },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => handleDeleteReminder(reminderId)
+        }
+      ]
+    );
+  };
+
+  const handleDeleteReminder = (reminderId: string) => {
+    setDeletingReminderId(reminderId);
+    
+    Alert.alert(
+      'Delete Reminder',
+      'Are you sure you want to delete this reminder? This action cannot be undone.',
+      [
+        { 
+          text: 'Cancel', 
+          style: 'cancel',
+          onPress: () => setDeletingReminderId(null)
+        },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (!token) {
+                throw new Error('No authentication token');
+              }
+              await deleteReminder(parseInt(reminderId));
+              
+              Alert.alert('Success', 'Reminder deleted successfully');
+            } catch (error: any) {
+              console.error('Failed to delete reminder:', error);
+              Alert.alert('Error', error.message || 'Failed to delete reminder');
+            } finally {
+              setDeletingReminderId(null);
             }
           }
         }
@@ -539,6 +594,8 @@ export default function VehicleDetailScreen() {
                       reminder={reminder}
                       onPress={() => handleEditLog(reminder.id)} 
                       onToggleComplete={() => handleToggleReminder(reminder.id)}
+                      onLongPress={() => handleReminderLongPress(reminder.id)}
+                      isDeleting={deletingReminderId === reminder.id}
                     />
                   ))}
                 </ScrollView>

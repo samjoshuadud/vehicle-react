@@ -18,7 +18,7 @@ export default function EditReminderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { statusBarStyle, backgroundColor } = useTheme();
   const { vehicles } = useVehicles();
-  const { getReminderById, updateReminder, deleteReminder } = useReminders();
+  const { getReminderById, updateReminder } = useReminders();
   
   const [reminder, setReminder] = useState<Reminder | null>(null);
   const [title, setTitle] = useState('');
@@ -42,6 +42,7 @@ export default function EditReminderScreen() {
         setDescription(reminderData.description || '');
         setDate(reminderData.due_date);
         setRepeatInterval((reminderData.repeat_interval as RepeatInterval) || 'none');
+        setMileageInterval(reminderData.mileage_interval ? reminderData.mileage_interval.toString() : '');
       } catch (error) {
         console.error('Error loading reminder:', error);
         Alert.alert('Error', 'Failed to load reminder data', [
@@ -74,12 +75,19 @@ export default function EditReminderScreen() {
 
     setIsLoading(true);
     try {
-      await updateReminder(parseInt(id!), {
+      const reminderData: any = {
         title,
         description,
         due_date: date,
         repeat_interval: repeatInterval === 'none' ? undefined : repeatInterval,
-      });
+      };
+
+      // Add mileage_interval if repeat interval is mileage
+      if (repeatInterval === 'mileage' && mileageInterval) {
+        reminderData.mileage_interval = parseInt(mileageInterval, 10);
+      }
+
+      await updateReminder(parseInt(id!), reminderData);
       
       Alert.alert('Success', 'Reminder updated successfully', [
         { text: 'OK', onPress: () => router.back() }
@@ -90,34 +98,6 @@ export default function EditReminderScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete Reminder',
-      'Are you sure you want to delete this reminder? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            setIsLoading(true);
-            try {
-              await deleteReminder(parseInt(id!));
-              Alert.alert('Success', 'Reminder deleted successfully', [
-                { text: 'OK', onPress: () => router.back() }
-              ]);
-            } catch (error) {
-              console.error('Error deleting reminder:', error);
-              Alert.alert('Error', 'Failed to delete reminder. Please try again.');
-            } finally {
-              setIsLoading(false);
-            }
-          }
-        }
-      ]
-    );
   };
 
   const placeholderVehicle = vehicles.length > 0 ? vehicles[0] : null;
@@ -170,12 +150,7 @@ export default function EditReminderScreen() {
             <Ionicons name="chevron-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Reminder</Text>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleDelete}
-          >
-            <Ionicons name="trash-outline" size={20} color="#EF4444" />
-          </TouchableOpacity>
+          <View style={styles.headerRight} />
         </View>
 
         {placeholderVehicle && (
@@ -256,13 +231,6 @@ export default function EditReminderScreen() {
               disabled={isLoading}
               variant="primary"
             />
-            
-            <Button
-              title={isLoading ? "Deleting..." : "Delete Reminder"}
-              onPress={handleDelete}
-              disabled={isLoading}
-              variant="danger"
-            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -296,8 +264,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
   },
-  deleteButton: {
-    padding: 4,
+  headerRight: {
+    width: 40,
   },
   vehicleInfo: {
     flexDirection: 'row',

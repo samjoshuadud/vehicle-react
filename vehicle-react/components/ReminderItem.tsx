@@ -7,12 +7,16 @@ interface ReminderItemProps {
   reminder: Reminder;
   onPress: () => void;
   onToggleComplete: () => void;
+  onLongPress?: () => void;
+  isDeleting?: boolean;
 }
 
 const ReminderItem: React.FC<ReminderItemProps> = ({ 
   reminder, 
   onPress, 
-  onToggleComplete 
+  onToggleComplete,
+  onLongPress,
+  isDeleting = false
 }) => {
   // Format the repeat interval for display
   const getRepeatText = () => {
@@ -21,7 +25,7 @@ const ReminderItem: React.FC<ReminderItemProps> = ({
     }
     
     if (reminder.repeatInterval === 'mileage' && reminder.mileageInterval) {
-      return `Every ${reminder.mileageInterval.toLocaleString()} liters`;
+      return `Every ${reminder.mileageInterval.toLocaleString()} km`;
     }
     
     return `Repeats ${reminder.repeatInterval}`;
@@ -42,15 +46,31 @@ const ReminderItem: React.FC<ReminderItemProps> = ({
     const today = new Date();
     return dueDate < today && !reminder.isCompleted;
   };
+
+  const handlePress = () => {
+    // Prevent navigation if currently deleting
+    if (isDeleting) return;
+    onPress();
+  };
+
+  const handleLongPress = () => {
+    // Prevent multiple actions if currently deleting
+    if (isDeleting || !onLongPress) return;
+    onLongPress();
+  };
   
   return (
     <TouchableOpacity 
       style={[
         styles.container,
-        reminder.isCompleted && styles.completedContainer
+        reminder.isCompleted && styles.completedContainer,
+        isDeleting && styles.deletingContainer
       ]} 
-      onPress={onPress}
+      onPress={handlePress}
+      onLongPress={handleLongPress}
+      delayLongPress={500}
       activeOpacity={0.7}
+      disabled={isDeleting}
     >
       <TouchableOpacity 
         style={styles.checkboxContainer}
@@ -157,6 +177,10 @@ const styles = StyleSheet.create({
   completedContainer: {
     backgroundColor: '#F9FAFB',
     opacity: 0.8,
+  },
+  deletingContainer: {
+    backgroundColor: '#FEE2E2',
+    opacity: 0.7,
   },
   checkboxContainer: {
     marginRight: 12,

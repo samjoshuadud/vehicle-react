@@ -56,6 +56,7 @@ export interface Reminder {
   description?: string;
   due_date: string;
   repeat_interval?: string;
+  mileage_interval?: number;
 }
 
 export interface LoginRequest {

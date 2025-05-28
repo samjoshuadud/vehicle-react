@@ -65,12 +65,19 @@ export default function AddReminderScreen() {
 
     setIsLoading(true);
     try {
-      await createReminder({
+      const reminderData: any = {
         title,
         description,
         due_date: date,
         repeat_interval: repeatInterval === 'none' ? undefined : repeatInterval,
-      });
+      };
+
+      // Add mileage_interval if repeat interval is mileage
+      if (repeatInterval === 'mileage' && mileageInterval) {
+        reminderData.mileage_interval = parseInt(mileageInterval, 10);
+      }
+
+      await createReminder(reminderData);
       
       Alert.alert('Success', 'Reminder created successfully', [
         { text: 'OK', onPress: () => router.back() }
