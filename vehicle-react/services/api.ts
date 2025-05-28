@@ -26,7 +26,7 @@ export interface Vehicle {
 export interface MaintenanceLog {
   maintenance_id: number;
   vehicle_id: number;
-  type: string;
+  maintenance_type: string;
   description: string;
   date: string;
   mileage: number;

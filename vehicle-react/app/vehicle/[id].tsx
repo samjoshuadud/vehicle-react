@@ -175,7 +175,7 @@ export default function VehicleDetailScreen() {
     
     Alert.alert(
       'Maintenance Log Actions',
-      `What would you like to do with this ${log.type} maintenance?`,
+      `What would you like to do with this ${log.maintenance_type} maintenance?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Edit', onPress: () => handleEditLog(log.maintenance_id.toString()) },
@@ -192,7 +192,7 @@ export default function VehicleDetailScreen() {
     setDeletingMaintenanceId(log.maintenance_id.toString());
     Alert.alert(
       'Delete Maintenance Log',
-      `Are you sure you want to delete this ${log.type} maintenance log? This action cannot be undone.`,
+      `Are you sure you want to delete this ${log.maintenance_type} maintenance log? This action cannot be undone.`,
       [
         { 
           text: 'Cancel', 
@@ -383,7 +383,7 @@ export default function VehicleDetailScreen() {
                     log={{
                       id: log.maintenance_id.toString(),
                       vehicleId: log.vehicle_id.toString(),
-                      type: log.type,
+                      type: log.maintenance_type,
                       description: log.description,
                       date: log.date,
                       mileage: log.mileage,

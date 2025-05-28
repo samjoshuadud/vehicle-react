@@ -83,7 +83,7 @@ export default function AddMaintenanceLogScreen() {
       const maintenanceData: Partial<MaintenanceLog> = {
         vehicle_id: vehicle.vehicle_id,
         date,
-        type,
+        maintenance_type: type, // Map 'type' to 'maintenance_type' for backend
         description,
         mileage: mileageNum,
         cost: costNum,

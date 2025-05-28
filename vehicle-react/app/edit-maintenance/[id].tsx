@@ -35,7 +35,7 @@ export default function EditMaintenanceLogScreen() {
         const maintenanceData = await apiService.getMaintenanceById(token, parseInt(id));
         setMaintenance(maintenanceData);
         setDate(maintenanceData.date);
-        setType(maintenanceData.type);
+        setType(maintenanceData.maintenance_type);
         setDescription(maintenanceData.description);
         setMileage(maintenanceData.mileage.toString());
         setCost(maintenanceData.cost.toString());
@@ -116,7 +116,7 @@ export default function EditMaintenanceLogScreen() {
     try {
       const updatedData: Partial<MaintenanceLog> = {
         date,
-        type,
+        maintenance_type: type,
         description,
         mileage: mileageNum,
         cost: costNum,
