@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/ThemedText';
+import { ThemeInitializer } from '@/components/ThemeInitializer';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { VehiclesProvider } from '@/context/VehiclesContext';
@@ -90,13 +91,15 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <VehiclesProvider>
-          <RemindersProvider>
-            <SafeAreaProvider>
-              <AuthAwareLayout />
-            </SafeAreaProvider>
-          </RemindersProvider>
-        </VehiclesProvider>
+        <ThemeInitializer>
+          <VehiclesProvider>
+            <RemindersProvider>
+              <SafeAreaProvider>
+                <AuthAwareLayout />
+              </SafeAreaProvider>
+            </RemindersProvider>
+          </VehiclesProvider>
+        </ThemeInitializer>
       </AuthProvider>
     </ThemeProvider>
   );

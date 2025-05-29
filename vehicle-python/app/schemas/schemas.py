@@ -13,8 +13,12 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
-class UserUpdate(UserBase):
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
     password: Optional[str] = None
+    mileage_type: Optional[str] = None
+    dark_mode: Optional[bool] = None
 
 class User(UserBase):
     user_id: int

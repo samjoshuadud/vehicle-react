@@ -18,6 +18,7 @@ interface AuthContextProps {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   register: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (userData: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | null>(null);
@@ -138,6 +139,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateUser = async (userData: Partial<User>) => {
+    try {
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      
+      console.log('🔄 AuthContext: Updating user profile...', userData);
+      const updatedUser = await apiService.updateUser(token, userData);
+      
+      console.log('💾 AuthContext: Storing updated user data locally...');
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      setUser(updatedUser);
+      console.log('✅ AuthContext: User profile updated successfully');
+    } catch (error) {
+      console.error('💥 AuthContext: User update failed', error);
+      // Log more details about the error
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      } else {
+        console.error('Unknown error type:', typeof error, error);
+      }
+      throw error;
+    }
+  };
+
   const value = {
     user,
     token,
@@ -146,6 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     register,
     logout,
+    updateUser,
   };
 
   return (

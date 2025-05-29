@@ -169,6 +169,38 @@ class ApiService {
     }
   }
 
+  async updateUser(token: string, userData: Partial<User>): Promise<User> {
+    try {
+      console.log('🌐 API: Making PUT request to update user:', userData);
+      const response = await fetch(`${this.baseUrl}/users/me`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      console.log('📡 API: Response status:', response.status);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('❌ API: Error response:', error);
+        throw new Error(error.detail || `HTTP ${response.status}: Failed to update user profile`);
+      }
+
+      const result = await response.json();
+      console.log('✅ API: User updated successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('💥 API: Update user error:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error during user profile update');
+    }
+  }
+
   async validateToken(token: string): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/users/me`, {

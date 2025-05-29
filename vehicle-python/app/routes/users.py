@@ -21,10 +21,10 @@ async def update_user(
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Update user fields
-    if user_update.full_name:
+    # Update user fields only if provided
+    if user_update.full_name is not None:
         current_user.full_name = user_update.full_name
-    if user_update.email:
+    if user_update.email is not None:
         # Check if email is already taken
         existing_user = db.query(models.User).filter(
             models.User.email == user_update.email,
@@ -36,11 +36,12 @@ async def update_user(
                 detail="Email already registered"
             )
         current_user.email = user_update.email
-    if user_update.password:
+    if user_update.password is not None:
         current_user.password = get_password_hash(user_update.password)
-    if user_update.mileage_type:
+    if user_update.mileage_type is not None:
         current_user.mileage_type = user_update.mileage_type
-    current_user.dark_mode = user_update.dark_mode
+    if user_update.dark_mode is not None:
+        current_user.dark_mode = user_update.dark_mode
 
     db.commit()
     db.refresh(current_user)

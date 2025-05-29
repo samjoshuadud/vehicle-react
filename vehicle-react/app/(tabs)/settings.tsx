@@ -6,25 +6,53 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function SettingsScreen() {
   const { darkMode, toggleDarkMode, setDarkMode, statusBarStyle } = useTheme();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [useMiles, setUseMiles] = useState(true);
-  const [autoBackup, setAutoBackup] = useState(false);
+  const { user, updateUser, logout } = useAuth();
+  const [useMiles, setUseMiles] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   
-  // Keep local state in sync with theme context
+  // Keep local state in sync with user data
   useEffect(() => {
-    // This effect runs when the theme context changes
-  }, [darkMode]);
+    if (user) {
+      setUseMiles(user.mileage_type === 'miles');
+      // Dark mode is handled by ThemeContext already
+    }
+  }, [user]);
 
-  const handleExportData = () => {
-    // In a real app, this would export user data
-    Alert.alert(
-      'Export Data',
-      'Your data would be exported in a real app. This is a placeholder.',
-      [{ text: 'OK' }]
-    );
+  const handleDarkModeToggle = async (value: boolean) => {
+    if (isUpdating) return;
+    
+    setIsUpdating(true);
+    try {
+      await updateUser({ dark_mode: value });
+      setDarkMode(value);
+    } catch (error: any) {
+      console.error('Failed to update dark mode:', error);
+      Alert.alert('Error', 'Failed to save dark mode preference');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleMileageToggle = async (value: boolean) => {
+    if (isUpdating) return;
+    
+    setIsUpdating(true);
+    try {
+      const mileageType = value ? 'miles' : 'kilometers';
+      await updateUser({ mileage_type: mileageType });
+      setUseMiles(value);
+    } catch (error: any) {
+      console.error('Failed to update mileage preference:', error);
+      Alert.alert('Error', 'Failed to save mileage preference');
+      // Revert the toggle
+      setUseMiles(!value);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -45,9 +73,14 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleLogout = () => {
-    // In a real app, this would log the user out
-    router.replace('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      Alert.alert('Error', 'Failed to log out. Please try again.');
+    }
   };
 
   return (
@@ -64,27 +97,15 @@ export default function SettingsScreen() {
           
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
-              <Ionicons name="notifications-outline" size={22} color="#4B5563" />
-              <Text style={styles.settingLabel}>Notifications</Text>
-            </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              trackColor={{ false: '#D1D5DB', true: '#BFDBFE' }}
-              thumbColor={notificationsEnabled ? '#3B82F6' : '#9CA3AF'}
-            />
-          </View>
-          
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
               <Ionicons name="moon-outline" size={22} color="#4B5563" />
               <Text style={styles.settingLabel}>Dark Mode</Text>
             </View>
             <Switch
               value={darkMode}
-              onValueChange={toggleDarkMode}
+              onValueChange={handleDarkModeToggle}
               trackColor={{ false: '#D1D5DB', true: '#BFDBFE' }}
               thumbColor={darkMode ? '#3B82F6' : '#9CA3AF'}
+              disabled={isUpdating}
             />
           </View>
           
@@ -95,55 +116,12 @@ export default function SettingsScreen() {
             </View>
             <Switch
               value={useMiles}
-              onValueChange={setUseMiles}
+              onValueChange={handleMileageToggle}
               trackColor={{ false: '#D1D5DB', true: '#BFDBFE' }}
               thumbColor={useMiles ? '#3B82F6' : '#9CA3AF'}
+              disabled={isUpdating}
             />
           </View>
-          
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <Ionicons name="cloud-upload-outline" size={22} color="#4B5563" />
-              <Text style={styles.settingLabel}>Auto Backup</Text>
-            </View>
-            <Switch
-              value={autoBackup}
-              onValueChange={setAutoBackup}
-              trackColor={{ false: '#D1D5DB', true: '#BFDBFE' }}
-              thumbColor={autoBackup ? '#3B82F6' : '#9CA3AF'}
-            />
-          </View>
-        </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Data</Text>
-          
-          <TouchableOpacity 
-            style={styles.actionItem}
-            onPress={handleExportData}
-          >
-            <View style={styles.actionInfo}>
-              <Ionicons name="download-outline" size={22} color="#4B5563" />
-              <Text style={styles.actionLabel}>Export Data</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem}>
-            <View style={styles.actionInfo}>
-              <Ionicons name="cloud-upload-outline" size={22} color="#4B5563" />
-              <Text style={styles.actionLabel}>Backup Now</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem}>
-            <View style={styles.actionInfo}>
-              <Ionicons name="cloud-download-outline" size={22} color="#4B5563" />
-              <Text style={styles.actionLabel}>Restore from Backup</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
         </View>
         
         <View style={styles.section}>
@@ -172,34 +150,6 @@ export default function SettingsScreen() {
             <View style={styles.actionInfo}>
               <Ionicons name="trash-outline" size={22} color="#EF4444" />
               <Text style={[styles.actionLabel, styles.dangerText]}>Delete Account</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          
-          <TouchableOpacity style={styles.actionItem}>
-            <View style={styles.actionInfo}>
-              <Ionicons name="information-circle-outline" size={22} color="#4B5563" />
-              <Text style={styles.actionLabel}>App Version</Text>
-            </View>
-            <Text style={styles.versionText}>1.0.0</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem}>
-            <View style={styles.actionInfo}>
-              <Ionicons name="document-text-outline" size={22} color="#4B5563" />
-              <Text style={styles.actionLabel}>Terms of Service</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionItem}>
-            <View style={styles.actionInfo}>
-              <Ionicons name="shield-outline" size={22} color="#4B5563" />
-              <Text style={styles.actionLabel}>Privacy Policy</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </TouchableOpacity>
@@ -293,10 +243,6 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: '#EF4444',
-  },
-  versionText: {
-    fontSize: 14,
-    color: '#9CA3AF',
   },
   logoutButtonContainer: {
     marginVertical: 24,
