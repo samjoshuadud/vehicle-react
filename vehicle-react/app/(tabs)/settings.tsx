@@ -137,20 +137,6 @@ export default function SettingsScreen() {
           
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
-              <Ionicons name="moon-outline" size={22} color="#4B5563" />
-              <Text style={styles.settingLabel}>Dark Mode</Text>
-            </View>
-            <Switch
-              value={darkMode}
-              onValueChange={handleDarkModeToggle}
-              trackColor={{ false: '#D1D5DB', true: '#BFDBFE' }}
-              thumbColor={darkMode ? '#3B82F6' : '#9CA3AF'}
-              disabled={isUpdating}
-            />
-          </View>
-          
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
               <Ionicons name="speedometer-outline" size={22} color="#4B5563" />
               <Text style={styles.settingLabel}>Use Miles (instead of Kilometers)</Text>
             </View>
