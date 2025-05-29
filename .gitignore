@@ -3,7 +3,6 @@ plans.txt
 *.txt
 *.md
 GMAIL_SETUP.md
-.gitignore
 
 .vscode/
 .env
