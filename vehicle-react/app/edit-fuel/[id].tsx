@@ -10,10 +10,11 @@ import Input from '@/components/ui/Input';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { apiService, FuelLog } from '@/services/api';
+import { convertDistance, convertVolume } from '@/utils/units';
 
 export default function EditFuelLogScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { statusBarStyle, backgroundColor, currencySymbol } = useTheme();
+  const { statusBarStyle, backgroundColor, currencySymbol, volumeUnit, distanceUnit } = useTheme();
   const { token } = useAuth();
   
   const [fuel, setFuel] = useState<FuelLog | null>(null);
@@ -39,12 +40,18 @@ export default function EditFuelLogScreen() {
         if (fuelData.kwh !== null && fuelData.kwh !== undefined) {
           setLiters(fuelData.kwh.toString());
         } else if (fuelData.liters !== null && fuelData.liters !== undefined) {
-          setLiters(fuelData.liters.toString());
+          // Convert stored liters to user's preferred volume unit for display
+          const displayVolume = convertVolume(fuelData.liters, 'L', volumeUnit);
+          setLiters(displayVolume.toFixed(2));
         } else {
           setLiters('');
         }
         setCost(fuelData.cost.toString());
-        setMileage(fuelData.odometer_reading.toString());
+        
+        // Convert stored km to user's preferred distance unit for display
+        const displayMileage = convertDistance(fuelData.odometer_reading, 'km', distanceUnit);
+        setMileage(Math.round(displayMileage).toString());
+        
         setLocation(fuelData.location || '');
         setIsFull(fuelData.full_tank || false);
         setNotes(fuelData.notes || '');
@@ -131,10 +138,13 @@ export default function EditFuelLogScreen() {
 
     setIsLoading(true);
     try {
+      // Convert user input to metric units for storage
+      const mileageInKm = convertDistance(mileageNum, distanceUnit, 'km');
+      
       const updatedData: Partial<FuelLog> = {
         date,
-        odometer_reading: mileageNum,
-        liters: (!isElectric && fuelAmount !== undefined) ? fuelAmount : undefined,
+        odometer_reading: mileageInKm,
+        liters: (!isElectric && fuelAmount !== undefined) ? convertVolume(fuelAmount, volumeUnit, 'L') : undefined,
         kwh: (isElectric && fuelAmount !== undefined) ? fuelAmount : undefined,
         cost: costNum,
         location: location || undefined,
@@ -190,14 +200,19 @@ export default function EditFuelLogScreen() {
           />
           
           {!isElectric ? (
-            <Input
-              label="Liters"
-              placeholder="Amount of fuel"
-              value={liters}
-              onChangeText={setLiters}
-              keyboardType="decimal-pad"
-              leftIcon={<Ionicons name="water-outline" size={20} color="#6B7280" />}
-            />
+            <>
+              <Input
+                label={`${volumeUnit === 'L' ? 'Liters' : 'Gallons'}`}
+                placeholder="Amount of fuel"
+                value={liters}
+                onChangeText={setLiters}
+                keyboardType="decimal-pad"
+                leftIcon={<Ionicons name="water-outline" size={20} color="#6B7280" />}
+              />
+              <Text style={styles.unitReminder}>
+                ⛽ Volume unit: {volumeUnit === 'L' ? 'Liters' : 'Gallons'} (Change in Settings)
+              </Text>
+            </>
           ) : (
             <Input
               label="kWh"
@@ -220,12 +235,15 @@ export default function EditFuelLogScreen() {
           
           <Input
             label="Odometer Reading *"
-            placeholder="Current vehicle mileage (km)"
+            placeholder={`Current vehicle mileage (${distanceUnit})`}
             value={mileage}
             onChangeText={setMileage}
             keyboardType="number-pad"
             leftIcon={<Ionicons name="speedometer-outline" size={20} color="#6B7280" />}
           />
+          <Text style={styles.unitReminder}>
+            📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
+          </Text>
           
           <Input
             label="Location *"
@@ -346,5 +364,12 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontSize: 16,
     color: '#4B5563',
+  },
+  unitReminder: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontStyle: 'italic',
+    marginTop: 4,
+    marginBottom: 8,
   },
 });

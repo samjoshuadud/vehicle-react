@@ -2,6 +2,8 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MaintenanceLog } from '../data/dummyData';
+import { useTheme } from '../context/ThemeContext';
+import { convertDistance, formatDistance } from '../utils/units';
 
 interface MaintenanceLogItemProps {
   log: MaintenanceLog;
@@ -11,6 +13,11 @@ interface MaintenanceLogItemProps {
 }
 
 const MaintenanceLogItem: React.FC<MaintenanceLogItemProps> = ({ log, onPress, onLongPress, isDeleting = false }) => {
+  const { distanceUnit } = useTheme();
+  
+  // Convert mileage from stored km to user's preferred unit
+  const displayMileage = convertDistance(log.mileage, 'km', distanceUnit);
+  const formattedMileage = formatDistance(displayMileage, distanceUnit, 0);
   const handlePress = () => {
     // Prevent navigation if currently deleting
     if (isDeleting) return;
@@ -61,7 +68,7 @@ const MaintenanceLogItem: React.FC<MaintenanceLogItemProps> = ({ log, onPress, o
           
           <View style={styles.detailItem}>
             <Ionicons name="speedometer-outline" size={14} color="#6B7280" />
-            <Text style={styles.detailText}>{log.mileage.toLocaleString()} km</Text>
+            <Text style={styles.detailText}>{formattedMileage}</Text>
           </View>
           
           <View style={styles.detailItem}>

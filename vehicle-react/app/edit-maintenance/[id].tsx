@@ -10,10 +10,11 @@ import Input from '@/components/ui/Input';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { apiService, MaintenanceLog } from '@/services/api';
+import { convertDistance, formatDistance } from '@/utils/units';
 
 export default function EditMaintenanceLogScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { statusBarStyle, backgroundColor } = useTheme();
+  const { statusBarStyle, backgroundColor, currencySymbol, distanceUnit } = useTheme();
   const { token } = useAuth();
   
   const [maintenance, setMaintenance] = useState<MaintenanceLog | null>(null);
@@ -37,7 +38,11 @@ export default function EditMaintenanceLogScreen() {
         setDate(maintenanceData.date);
         setType(maintenanceData.maintenance_type);
         setDescription(maintenanceData.description);
-        setMileage(maintenanceData.mileage.toString());
+        
+        // Convert stored km to user's preferred unit for display
+        const displayMileage = convertDistance(maintenanceData.mileage, 'km', distanceUnit);
+        setMileage(Math.round(displayMileage).toString());
+        
         setCost(maintenanceData.cost.toString());
         setLocation(maintenanceData.location || '');
         setNotes(maintenanceData.notes || '');
@@ -114,11 +119,14 @@ export default function EditMaintenanceLogScreen() {
 
     setIsLoading(true);
     try {
+      // Convert user input to metric units for storage
+      const mileageInKm = convertDistance(mileageNum, distanceUnit, 'km');
+      
       const updatedData: Partial<MaintenanceLog> = {
         date,
         maintenance_type: type,
         description,
-        mileage: mileageNum,
+        mileage: mileageInKm,
         cost: costNum,
         location: location || undefined,
         notes: notes || undefined,
@@ -216,17 +224,20 @@ export default function EditMaintenanceLogScreen() {
           />
           
           <Input
-            label="Mileage *"
-            placeholder="Current vehicle mileage"
+            label={`Mileage (${distanceUnit}) *`}
+            placeholder={`Current vehicle mileage (${distanceUnit})`}
             value={mileage}
             onChangeText={setMileage}
             keyboardType="number-pad"
             leftIcon={<Ionicons name="speedometer-outline" size={20} color="#6B7280" />}
           />
+          <Text style={styles.unitReminder}>
+            📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
+          </Text>
           
           <Input
             label="Cost *"
-            placeholder="Cost in dollars"
+            placeholder={`Cost in ${currencySymbol}`}
             value={cost}
             onChangeText={setCost}
             keyboardType="decimal-pad"
@@ -353,5 +364,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#EF4444',
+  },
+  unitReminder: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontStyle: 'italic',
+    marginTop: 4,
+    marginBottom: 8,
   },
 });

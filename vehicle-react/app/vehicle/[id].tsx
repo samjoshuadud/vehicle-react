@@ -14,6 +14,7 @@ import { useReminders } from '@/context/RemindersContext';
 import { apiService } from '@/services/api';
 import { Vehicle, MaintenanceLog, FuelLog, Reminder as APIReminder } from '@/services/api';
 import { Reminder as UIReminder } from '@/data/dummyData';
+import { convertDistance, formatDistance } from '@/utils/units';
 
 // Transform API reminder to UI reminder format for vehicle-specific filtering
 const transformReminder = (apiReminder: APIReminder): UIReminder => ({
@@ -39,7 +40,7 @@ export default function VehicleDetailScreen() {
   const [deletingMaintenanceId, setDeletingMaintenanceId] = useState<string | null>(null);
   const [deletingFuelId, setDeletingFuelId] = useState<string | null>(null);
   const [deletingReminderId, setDeletingReminderId] = useState<string | null>(null);
-  const { statusBarStyle, backgroundColor } = useTheme();
+  const { statusBarStyle, backgroundColor, distanceUnit } = useTheme();
   const { vehicles, refreshVehicles } = useVehicles();
   const { token } = useAuth();
   const { reminders, isLoading: isLoadingReminders, refreshReminders, deleteReminder } = useReminders();
@@ -387,8 +388,13 @@ export default function VehicleDetailScreen() {
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
           <Ionicons name="speedometer-outline" size={24} color="#3B82F6" />
-          <Text style={styles.statValue}>{vehicle.current_mileage ? vehicle.current_mileage.toLocaleString() : 'N/A'}</Text>
-          <Text style={styles.statLabel}>Kilometers</Text>
+          <Text style={styles.statValue}>
+            {vehicle.current_mileage ? (() => {
+              const displayMileage = convertDistance(vehicle.current_mileage, 'km', distanceUnit);
+              return formatDistance(displayMileage, distanceUnit, 0);
+            })() : 'N/A'}
+          </Text>
+          <Text style={styles.statLabel}>{distanceUnit === 'km' ? 'Kilometers' : 'Miles'}</Text>
         </View>
         
         <View style={styles.statDivider} />

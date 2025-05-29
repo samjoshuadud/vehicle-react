@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FuelLog as APIFuelLog } from '@/services/api';
 import { FuelLog as DummyFuelLog } from '../data/dummyData';
 import { useTheme } from '@/context/ThemeContext';
+import { convertDistance, convertVolume, formatDistance, formatVolume } from '../utils/units';
 
 // Combined interface that accepts both API and UI formats
 type FuelLogCombined = Partial<APIFuelLog> & Partial<DummyFuelLog>;
@@ -21,7 +22,7 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({
   onLongPress, 
   isDeleting = false 
 }) => {
-  const { currencySymbol } = useTheme();
+  const { currencySymbol, distanceUnit, volumeUnit } = useTheme();
   
   // Determine if this is an electric vehicle based on kwh field
   const isElectric = log.kwh !== undefined && log.kwh !== null && log.kwh > 0;
@@ -31,11 +32,13 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({
   if (isElectric) {
     amount = (log.kwh !== undefined && log.kwh !== null) ? Number(log.kwh) : undefined;
   } else {
-    amount = (log.liters !== undefined && log.liters !== null) ? Number(log.liters) : undefined;
+    // Convert volume from stored liters to user's preferred unit
+    const storedLiters = (log.liters !== undefined && log.liters !== null) ? Number(log.liters) : undefined;
+    amount = storedLiters !== undefined ? convertVolume(storedLiters, 'L', volumeUnit) : undefined;
   }
   
-  const unit = isElectric ? 'kWh' : 'L';
-  const unitLabel = isElectric ? 'kWh' : 'liters';
+  const unit = isElectric ? 'kWh' : volumeUnit;
+  const unitLabel = isElectric ? 'kWh' : (volumeUnit === 'L' ? 'liters' : 'gallons');
   
   // Calculate price per unit - handle null/undefined cost and amount values
   const pricePerUnit = (amount !== undefined && amount > 0 && log.cost && typeof log.cost === 'number') 
@@ -92,11 +95,18 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({
           <View style={styles.detailItem}>
             <Ionicons name="speedometer-outline" size={14} color="#6B7280" />
             <Text style={styles.detailText}>
-              {(log.mileage !== undefined && log.mileage !== null) 
-                ? log.mileage.toLocaleString() 
-                : (log.odometer_reading !== undefined && log.odometer_reading !== null) 
-                  ? log.odometer_reading.toLocaleString() 
-                  : '0'} km
+              {(() => {
+                // Get mileage/odometer reading (assuming stored in km)
+                const storedDistance = (log.mileage !== undefined && log.mileage !== null) 
+                  ? log.mileage
+                  : (log.odometer_reading !== undefined && log.odometer_reading !== null) 
+                    ? log.odometer_reading 
+                    : 0;
+                
+                // Convert to user's preferred unit
+                const displayDistance = convertDistance(storedDistance, 'km', distanceUnit);
+                return formatDistance(displayDistance, distanceUnit, 0);
+              })()}
             </Text>
           </View>
           

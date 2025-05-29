@@ -2,6 +2,8 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Reminder } from '../data/dummyData';
+import { useTheme } from '../context/ThemeContext';
+import { convertDistance, formatDistance } from '../utils/units';
 
 interface ReminderItemProps {
   reminder: Reminder;
@@ -18,6 +20,8 @@ const ReminderItem: React.FC<ReminderItemProps> = ({
   onLongPress,
   isDeleting = false
 }) => {
+  const { distanceUnit } = useTheme();
+  
   // Format the repeat interval for display
   const getRepeatText = () => {
     if (!reminder.repeatInterval || reminder.repeatInterval === 'none') {
@@ -25,7 +29,10 @@ const ReminderItem: React.FC<ReminderItemProps> = ({
     }
     
     if (reminder.repeatInterval === 'mileage' && reminder.mileageInterval) {
-      return `Every ${reminder.mileageInterval.toLocaleString()} km`;
+      // Convert stored km to user's preferred unit for display
+      const displayMileage = convertDistance(reminder.mileageInterval, 'km', distanceUnit);
+      const formattedMileage = formatDistance(displayMileage, distanceUnit, 0);
+      return `Every ${formattedMileage}`;
     }
     
     return `Repeats ${reminder.repeatInterval}`;

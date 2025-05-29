@@ -3,6 +3,8 @@ import { StyleSheet, TouchableOpacity, Image, View, Text, Alert } from 'react-na
 import { Ionicons } from '@expo/vector-icons';
 import { Vehicle } from '../services/api';
 import { useVehicles } from '../context/VehiclesContext';
+import { useTheme } from '../context/ThemeContext';
+import { convertDistance, formatDistance } from '../utils/units';
 import { router } from 'expo-router';
 
 interface VehicleCardProps {
@@ -13,7 +15,12 @@ interface VehicleCardProps {
 const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onPress }) => {
   const defaultImage = 'https://via.placeholder.com/300x200/E5E7EB/6B7280?text=Vehicle';
   const { deleteVehicle } = useVehicles();
+  const { distanceUnit } = useTheme();
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Convert mileage to user's preferred unit (assuming stored value is in km)
+  const displayMileage = convertDistance(vehicle.current_mileage, 'km', distanceUnit);
+  const formattedMileage = formatDistance(displayMileage, distanceUnit, 0);
   
   const handlePress = () => {
     // Prevent navigation if currently deleting
@@ -102,7 +109,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onPress }) => {
         <View style={styles.detailsContainer}>
           <View style={styles.detailItem}>
             <Ionicons name="speedometer-outline" size={16} color="#4B5563" />
-            <Text style={styles.detailText}>{vehicle.current_mileage.toLocaleString()} km</Text>
+            <Text style={styles.detailText}>{formattedMileage}</Text>
           </View>
           
           {vehicle.purchase_date && (

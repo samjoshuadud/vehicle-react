@@ -12,11 +12,12 @@ import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
 import { useVehicles } from '@/context/VehiclesContext';
 import { useAuth } from '@/context/AuthContext';
+import { convertDistance, formatDistance } from '@/utils/units';
 import { Vehicle } from '@/services/api';
 
 export default function EditVehicleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { statusBarStyle, backgroundColor } = useTheme();
+  const { statusBarStyle, backgroundColor, distanceUnit } = useTheme();
   const { vehicles, updateVehicle } = useVehicles();
   const { token } = useAuth();
   
@@ -44,7 +45,11 @@ export default function EditVehicleScreen() {
       setColor(vehicle.color || '');
       setLicensePlate(vehicle.license_plate || '');
       setVin(vehicle.vin || '');
-      setMileage(vehicle.current_mileage.toString());
+      
+      // Convert stored km to user's preferred unit for display
+      const displayMileage = convertDistance(vehicle.current_mileage, 'km', distanceUnit);
+      setMileage(Math.round(displayMileage).toString());
+      
       setFuelType(vehicle.fuel_type || '');
       setPurchaseDate(vehicle.purchase_date || '');
       
@@ -54,7 +59,7 @@ export default function EditVehicleScreen() {
         setBase64Image(vehicle.vehicle_image);
       }
     }
-  }, [vehicle]);
+  }, [vehicle, distanceUnit]);
 
   // Handle if vehicle not found
   if (!vehicle) {
@@ -99,6 +104,12 @@ export default function EditVehicleScreen() {
 
     setIsLoading(true);
     try {
+      // Convert user input to metric units for storage
+      let mileageInKm = 0;
+      if (mileage) {
+        mileageInKm = convertDistance(mileageNum, distanceUnit, 'km');
+      }
+      
       const updatedData: Partial<Vehicle> = {
         make,
         model,
@@ -106,7 +117,7 @@ export default function EditVehicleScreen() {
         color: color || undefined,
         license_plate: licensePlate || undefined,
         vin: vin || undefined,
-        current_mileage: mileageNum || 0,
+        current_mileage: mileageInKm,
         fuel_type: fuelType || undefined,
         purchase_date: purchaseDate || undefined,
         vehicle_image: base64Image || undefined,
@@ -256,6 +267,9 @@ export default function EditVehicleScreen() {
             keyboardType="number-pad"
             leftIcon={<Ionicons name="speedometer-outline" size={20} color="#6B7280" />}
           />
+          <Text style={styles.unitReminder}>
+            📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
+          </Text>
           
           <Input
             label="Fuel Type"
@@ -383,5 +397,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     marginTop: 16,
+  },
+  unitReminder: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontStyle: 'italic',
+    marginTop: 4,
+    marginBottom: 8,
   },
 });

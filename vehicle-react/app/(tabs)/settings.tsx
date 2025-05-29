@@ -9,7 +9,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 
 export default function SettingsScreen() {
-  const { darkMode, toggleDarkMode, setDarkMode, statusBarStyle } = useTheme();
+  const { darkMode, toggleDarkMode, setDarkMode, statusBarStyle, setMileageUnit } = useTheme();
   const { user, updateUser, logout } = useAuth();
   const [useMiles, setUseMiles] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -45,6 +45,7 @@ export default function SettingsScreen() {
       const mileageType = value ? 'miles' : 'kilometers';
       await updateUser({ mileage_type: mileageType });
       setUseMiles(value);
+      setMileageUnit(value); // Update theme context immediately
     } catch (error: any) {
       console.error('Failed to update mileage preference:', error);
       Alert.alert('Error', 'Failed to save mileage preference');

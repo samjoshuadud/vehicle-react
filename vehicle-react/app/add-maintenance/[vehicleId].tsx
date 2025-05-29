@@ -11,10 +11,11 @@ import { useTheme } from '@/context/ThemeContext';
 import { useVehicles } from '@/context/VehiclesContext';
 import { useAuth } from '@/context/AuthContext';
 import { apiService, MaintenanceLog } from '@/services/api';
+import { convertDistance } from '@/utils/units';
 
 export default function AddMaintenanceLogScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
-  const { statusBarStyle, backgroundColor } = useTheme();
+  const { statusBarStyle, backgroundColor, currencySymbol, distanceUnit } = useTheme();
   const { vehicles } = useVehicles();
   const { token } = useAuth();
   
@@ -80,12 +81,15 @@ export default function AddMaintenanceLogScreen() {
 
     setIsLoading(true);
     try {
+      // Convert user input to metric units for storage
+      const mileageInKm = convertDistance(mileageNum, distanceUnit, 'km');
+      
       const maintenanceData: Partial<MaintenanceLog> = {
         vehicle_id: vehicle.vehicle_id,
         date,
         maintenance_type: type, // Map 'type' to 'maintenance_type' for backend
         description,
-        mileage: mileageNum,
+        mileage: mileageInKm,
         cost: costNum,
         location: location || undefined,
         notes: notes || undefined,
@@ -157,17 +161,20 @@ export default function AddMaintenanceLogScreen() {
           />
           
           <Input
-            label="Mileage *"
-            placeholder="Current vehicle mileage"
+            label={`Mileage (${distanceUnit}) *`}
+            placeholder={`Current vehicle mileage (${distanceUnit})`}
             value={mileage}
             onChangeText={setMileage}
             keyboardType="number-pad"
             leftIcon={<Ionicons name="speedometer-outline" size={20} color="#6B7280" />}
           />
+          <Text style={styles.unitReminder}>
+            📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
+          </Text>
           
           <Input
             label="Cost *"
-            placeholder="Cost in dollars"
+            placeholder={`Cost in ${currencySymbol}`}
             value={cost}
             onChangeText={setCost}
             keyboardType="decimal-pad"
@@ -274,5 +281,12 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginTop: 24,
+  },
+  unitReminder: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontStyle: 'italic',
+    marginTop: 4,
+    marginBottom: 8,
   },
 });

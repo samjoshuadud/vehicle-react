@@ -11,6 +11,7 @@ import Input from '@/components/ui/Input';
 import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
 import { useVehicles } from '@/context/VehiclesContext';
+import { convertDistance } from '@/utils/units';
 
 export default function AddVehicleScreen() {
   const [make, setMake] = useState('');
@@ -25,7 +26,7 @@ export default function AddVehicleScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [base64Image, setBase64Image] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { statusBarStyle, backgroundColor } = useTheme();
+  const { statusBarStyle, backgroundColor, distanceUnit } = useTheme();
 
   const pickImage = async () => {
     // Request permissions
@@ -99,7 +100,12 @@ export default function AddVehicleScreen() {
       // Add optional fields if they have values
       if (color.trim()) vehicleData.color = color.trim();
       if (vin.trim()) vehicleData.vin = vin.trim();
-      if (mileage) vehicleData.current_mileage = parseInt(mileage);
+      if (mileage) {
+        const mileageNum = parseInt(mileage);
+        // Convert user input to metric units for storage
+        const mileageInKm = convertDistance(mileageNum, distanceUnit, 'km');
+        vehicleData.current_mileage = mileageInKm;
+      }
       if (fuelType.trim()) vehicleData.fuel_type = fuelType.trim();
       if (purchaseDate.trim()) vehicleData.purchase_date = purchaseDate.trim();
       if (base64Image) vehicleData.vehicle_image = base64Image;
@@ -228,13 +234,16 @@ export default function AddVehicleScreen() {
             <Text style={styles.sectionTitle}>Additional Details</Text>
             
             <Input
-              label="Current Mileage"
-              placeholder="e.g. 15000"
+              label={`Current Mileage (${distanceUnit})`}
+              placeholder={`e.g. 15000 ${distanceUnit}`}
               value={mileage}
               onChangeText={setMileage}
               keyboardType="number-pad"
               leftIcon={<Ionicons name="speedometer-outline" size={20} color="#6B7280" />}
             />
+            <Text style={styles.unitReminder}>
+              📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
+            </Text>
             
             <Input
               label="Fuel Type"
@@ -355,5 +364,12 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontStyle: 'italic',
     marginTop: 8,
+  },
+  unitReminder: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontStyle: 'italic',
+    marginTop: 4,
+    marginBottom: 8,
   },
 });

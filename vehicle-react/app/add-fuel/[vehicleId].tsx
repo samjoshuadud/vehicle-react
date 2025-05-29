@@ -11,10 +11,11 @@ import { useTheme } from '@/context/ThemeContext';
 import { useVehicles } from '@/context/VehiclesContext';
 import { useAuth } from '@/context/AuthContext';
 import { apiService, FuelLog } from '@/services/api';
+import { convertDistance, convertVolume } from '@/utils/units';
 
 export default function AddFuelLogScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
-  const { statusBarStyle, backgroundColor, currencySymbol } = useTheme();
+  const { statusBarStyle, backgroundColor, currencySymbol, volumeUnit, distanceUnit } = useTheme();
   const { vehicles } = useVehicles();
   const { token } = useAuth();
   
@@ -89,11 +90,20 @@ export default function AddFuelLogScreen() {
 
     setIsLoading(true);
     try {
+      // Convert user input to metric units for storage
+      const mileageInKm = convertDistance(mileageNum, distanceUnit, 'km');
+      let litersInMetric = undefined;
+      
+      if (!isElectric && liters) {
+        const volumeValue = parseFloat(liters);
+        litersInMetric = convertVolume(volumeValue, volumeUnit, 'L');
+      }
+      
       const fuelData: Partial<FuelLog> = {
         vehicle_id: vehicle.vehicle_id,
         date,
-        odometer_reading: mileageNum,
-        liters: (!isElectric && liters) ? parseFloat(liters) : undefined,
+        odometer_reading: mileageInKm,
+        liters: litersInMetric,
         kwh: (isElectric && liters) ? parseFloat(liters) : undefined,
         cost: costNum,
         location: location || undefined,
@@ -144,14 +154,19 @@ export default function AddFuelLogScreen() {
           />
           
           {!isElectric ? (
-            <Input
-              label="Liters *"
-              placeholder="Amount of fuel"
-              value={liters}
-              onChangeText={setLiters}
-              keyboardType="decimal-pad"
-              leftIcon={<Ionicons name="water-outline" size={20} color="#6B7280" />}
-            />
+            <>
+              <Input
+                label={`${volumeUnit === 'L' ? 'Liters' : 'Gallons'} *`}
+                placeholder="Amount of fuel"
+                value={liters}
+                onChangeText={setLiters}
+                keyboardType="decimal-pad"
+                leftIcon={<Ionicons name="water-outline" size={20} color="#6B7280" />}
+              />
+              <Text style={styles.unitReminder}>
+                ⛽ Volume unit: {volumeUnit === 'L' ? 'Liters' : 'Gallons'} (Change in Settings)
+              </Text>
+            </>
           ) : (
             <Input
               label="kWh (optional)"
@@ -174,12 +189,15 @@ export default function AddFuelLogScreen() {
           
           <Input
             label="Odometer Reading *"
-            placeholder="Current vehicle mileage (km)"
+            placeholder={`Current vehicle mileage (${distanceUnit})`}
             value={mileage}
             onChangeText={setMileage}
             keyboardType="number-pad"
             leftIcon={<Ionicons name="speedometer-outline" size={20} color="#6B7280" />}
           />
+          <Text style={styles.unitReminder}>
+            📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
+          </Text>
           
           <Input
             label="Location *"
@@ -296,5 +314,12 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginTop: 24,
+  },
+  unitReminder: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontStyle: 'italic',
+    marginTop: 4,
+    marginBottom: 8,
   },
 });
