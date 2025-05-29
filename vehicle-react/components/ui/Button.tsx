@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, View } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, View, ViewStyle } from 'react-native';
 
 interface ButtonProps {
   title: string;
@@ -10,6 +10,7 @@ interface ButtonProps {
   loading?: boolean;
   fullWidth?: boolean;
   icon?: React.ReactNode;
+  style?: ViewStyle;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -21,6 +22,7 @@ const Button: React.FC<ButtonProps> = ({
   loading = false,
   fullWidth = false,
   icon,
+  style,
 }) => {
   const getButtonStyle = () => {
     // Start with base style
@@ -89,7 +91,7 @@ const Button: React.FC<ButtonProps> = ({
   
   return (
     <TouchableOpacity
-      style={getButtonStyle()}
+      style={[getButtonStyle(), style]}
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.7}

@@ -9,4 +9,7 @@ python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
 pydantic[email]
-albemic
+alembic
+aiosmtplib
+email-validator
+jinja2

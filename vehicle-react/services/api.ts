@@ -236,6 +236,115 @@ class ApiService {
     }
   }
 
+  async requestPasswordReset(email: string): Promise<{message: string}> {
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to request password reset';
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || errorMessage;
+        } catch (jsonError) {
+          // If response isn't JSON, get text content
+          const text = await response.text();
+          console.error('Non-JSON error response:', text);
+          errorMessage = `Server error (${response.status}): ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      if (error instanceof Error) {
+        // Check if it's a JSON parsing error
+        if (error.message.includes('JSON') || error.message.includes('parse')) {
+          throw new Error('Server connection error. Please check if the backend server is running.');
+        }
+        throw error;
+      }
+      throw new Error('Network error during password reset request');
+    }
+  }
+
+  async resetPassword(email: string, token: string, newPassword: string): Promise<{message: string}> {
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          token,
+          new_password: newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to reset password';
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || errorMessage;
+        } catch (jsonError) {
+          // If response isn't JSON, get text content
+          const text = await response.text();
+          console.error('Non-JSON error response:', text);
+          errorMessage = `Server error (${response.status}): ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      if (error instanceof Error) {
+        // Check if it's a JSON parsing error
+        if (error.message.includes('JSON') || error.message.includes('parse')) {
+          throw new Error('Server connection error. Please check if the backend server is running.');
+        }
+        throw error;
+      }
+      throw new Error('Network error during password reset');
+    }
+  }
+
+  async changePassword(token: string, currentPassword: string, newPassword: string): Promise<{message: string}> {
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to change password');
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error during password change');
+    }
+  }
+
   async validateToken(token: string): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/users/me`, {

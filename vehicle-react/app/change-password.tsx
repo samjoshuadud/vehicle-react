@@ -9,10 +9,11 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { apiService } from '@/services/api';
 
 export default function ChangePasswordScreen() {
   const { statusBarStyle, backgroundColor } = useTheme();
-  const { updateUser } = useAuth();
+  const { token } = useAuth();
   
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -51,11 +52,14 @@ export default function ChangePasswordScreen() {
       return;
     }
 
+    if (!token) {
+      Alert.alert('Error', 'You must be logged in to change your password');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Note: In a real implementation, you'd want to verify the current password
-      // against the backend before updating. For now, we'll just update with the new password.
-      await updateUser({ password: newPassword });
+      await apiService.changePassword(token, currentPassword, newPassword);
       
       Alert.alert(
         'Success', 

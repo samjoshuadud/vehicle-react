@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, Enum, ForeignKey, Text, Numeric, DECIMAL
+from sqlalchemy import Column, Integer, String, Boolean, Date, Enum, ForeignKey, Text, Numeric, DECIMAL, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mysql import LONGTEXT
+from datetime import datetime
 from ..database.database import Base
 
 class User(Base):
@@ -87,3 +88,16 @@ class Reminder(Base):
     # Relationships
     user = relationship("User", back_populates="reminders")
     vehicle = relationship("Vehicle", back_populates="reminders")
+
+class PasswordResetToken(Base):
+    __tablename__ = "Password_Reset_Tokens"
+
+    token_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('Users.user_id', ondelete='CASCADE'), nullable=False)
+    token = Column(String(6), nullable=False)  # 6-digit code
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationship
+    user = relationship("User")

@@ -128,3 +128,17 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+# Password Reset Schemas
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    email: EmailStr
+    token: str
+    new_password: str
+
+# Change Password Schema
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
