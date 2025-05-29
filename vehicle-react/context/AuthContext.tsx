@@ -19,6 +19,7 @@ interface AuthContextProps {
   register: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => Promise<void>;
+  deleteUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | null>(null);
@@ -166,6 +167,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const deleteUser = async () => {
+    try {
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      
+      console.log('🗑️ AuthContext: Deleting user account...');
+      await apiService.deleteUser(token);
+      
+      console.log('🧹 AuthContext: Clearing local storage...');
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('rememberMe');
+      
+      setUser(null);
+      setToken(null);
+      console.log('✅ AuthContext: User account deleted successfully');
+    } catch (error) {
+      console.error('💥 AuthContext: User deletion failed', error);
+      throw error;
+    }
+  };
+
   const value = {
     user,
     token,
@@ -175,6 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     updateUser,
+    deleteUser,
   };
 
   return (

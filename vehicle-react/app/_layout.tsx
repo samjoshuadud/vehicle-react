@@ -63,6 +63,8 @@ function AuthAwareLayout() {
         <Stack.Screen name="edit-maintenance/[id]" />
         <Stack.Screen name="edit-fuel/[id]" />
         <Stack.Screen name="edit-reminder/[id]" />
+        <Stack.Screen name="edit-profile" />
+        <Stack.Screen name="change-password" />
         <Stack.Screen name="+not-found" />
       </Stack>
     </NavigationThemeProvider>

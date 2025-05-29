@@ -201,6 +201,41 @@ class ApiService {
     }
   }
 
+  async deleteUser(token: string): Promise<void> {
+    try {
+      console.log('🗑️ API: Making DELETE request to delete user account');
+      const response = await fetch(`${this.baseUrl}/users/me`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('📡 API: Response status:', response.status);
+      
+      if (!response.ok) {
+        let errorMessage = 'Failed to delete account';
+        try {
+          const error = await response.json();
+          errorMessage = error.detail || errorMessage;
+        } catch (parseError) {
+          errorMessage = response.status === 401 ? 'Authentication failed' : `Server error (${response.status})`;
+        }
+        console.error('❌ API: Error response:', errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      console.log('✅ API: User account deleted successfully');
+    } catch (error) {
+      console.error('💥 API: Delete user error:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error during account deletion');
+    }
+  }
+
   async validateToken(token: string): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/users/me`, {

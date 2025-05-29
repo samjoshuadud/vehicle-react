@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function SettingsScreen() {
   const { darkMode, toggleDarkMode, setDarkMode, statusBarStyle, setMileageUnit } = useTheme();
-  const { user, updateUser, logout } = useAuth();
+  const { user, updateUser, logout, deleteUser } = useAuth();
   const [useMiles, setUseMiles] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   
@@ -59,19 +59,58 @@ export default function SettingsScreen() {
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone.',
+      'Are you sure you want to delete your account? This will permanently delete all your vehicles, maintenance logs, fuel logs, and reminders. This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Delete', 
+          text: 'Delete Forever', 
           style: 'destructive',
-          onPress: () => {
-            // In a real app, this would delete the user's account
-            console.log('Account deletion requested');
-          }
+          onPress: confirmDeleteAccount
         }
       ]
     );
+  };
+
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      'Final Confirmation',
+      'This is your last chance to cancel. Are you absolutely sure you want to permanently delete your account and all data?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Yes, Delete Everything', 
+          style: 'destructive',
+          onPress: performDeleteAccount
+        }
+      ]
+    );
+  };
+
+  const performDeleteAccount = async () => {
+    if (isUpdating) return;
+    
+    setIsUpdating(true);
+    try {
+      await deleteUser();
+      Alert.alert(
+        'Account Deleted',
+        'Your account has been permanently deleted. You will now be redirected to the login screen.',
+        [
+          { 
+            text: 'OK', 
+            onPress: () => router.replace('/login')
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('Failed to delete account:', error);
+      Alert.alert(
+        'Deletion Failed', 
+        error.message || 'Failed to delete account. Please try again or contact support.'
+      );
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -128,7 +167,10 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           
-          <TouchableOpacity style={styles.actionItem}>
+          <TouchableOpacity 
+            style={styles.actionItem}
+            onPress={() => router.push('/edit-profile')}
+          >
             <View style={styles.actionInfo}>
               <Ionicons name="person-outline" size={22} color="#4B5563" />
               <Text style={styles.actionLabel}>Edit Profile</Text>
@@ -136,7 +178,10 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionItem}>
+          <TouchableOpacity 
+            style={styles.actionItem}
+            onPress={() => router.push('/change-password')}
+          >
             <View style={styles.actionInfo}>
               <Ionicons name="lock-closed-outline" size={22} color="#4B5563" />
               <Text style={styles.actionLabel}>Change Password</Text>
@@ -145,14 +190,17 @@ export default function SettingsScreen() {
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.actionItem}
+            style={[styles.actionItem, isUpdating && styles.disabledItem]}
             onPress={handleDeleteAccount}
+            disabled={isUpdating}
           >
             <View style={styles.actionInfo}>
               <Ionicons name="trash-outline" size={22} color="#EF4444" />
-              <Text style={[styles.actionLabel, styles.dangerText]}>Delete Account</Text>
+              <Text style={[styles.actionLabel, styles.dangerText]}>
+                {isUpdating ? 'Deleting Account...' : 'Delete Account'}
+              </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            {!isUpdating && <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />}
           </TouchableOpacity>
         </View>
         
@@ -232,6 +280,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+  },
+  disabledItem: {
+    opacity: 0.5,
   },
   actionInfo: {
     flexDirection: 'row',
