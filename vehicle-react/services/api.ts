@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://192.168.100.200:8000'; // Backend server IP
+
+// Change accordingly (if changed machine or changed network)
+const API_BASE_URL = 'http://192.168.100.114:8000'; // Backend server IP
 
 export interface User {
   user_id: number;
