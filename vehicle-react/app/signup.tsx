@@ -18,12 +18,18 @@ export default function SignupScreen() {
 
   const { statusBarStyle, backgroundColor } = useTheme();
   const { register: registerUser } = useAuth();
-  const { register } = useAuth();
   
   const handleSignup = async () => {
     // Validate inputs
     if (!name || !email || !password || !confirmPassword) {
       Alert.alert('Missing Information', 'Please fill in all fields');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
 
@@ -34,8 +40,8 @@ export default function SignupScreen() {
     }
 
     // Validate password length
-    if (password.length < 6) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters long');
+    if (password.length < 8) {
+      Alert.alert('Weak Password', 'Password must be at least 8 characters long');
       return;
     }
 
@@ -44,7 +50,31 @@ export default function SignupScreen() {
       await registerUser(email, password, name);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message || 'Something went wrong. Please try again.');
+      let errorTitle = 'Registration Failed';
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      if (error.message) {
+        if (error.message.includes('already exists') || error.message.includes('already registered')) {
+          errorTitle = 'Email Already Used';
+          errorMessage = 'An account with this email address already exists. Please use a different email or try logging in.';
+        } else if (error.message.includes('Connection error') || error.message.includes('internet connection')) {
+          errorTitle = 'Connection Error';
+          errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+        } else if (error.message.includes('Server connection error') || error.message.includes('backend server')) {
+          errorTitle = 'Server Unavailable';
+          errorMessage = 'The server is currently unavailable. Please try again later or contact support if the problem persists.';
+        } else if (error.message.includes('Server error') || error.message.includes('try again later')) {
+          errorTitle = 'Server Error';
+          errorMessage = 'The server encountered an error. Please try again in a few minutes.';
+        } else if (error.message.includes('validation') || error.message.includes('requirements')) {
+          errorTitle = 'Invalid Information';
+          errorMessage = 'Please check that all information is entered correctly and meets the requirements.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -158,7 +188,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
-  },  formContainer: {
+  },
+  formContainer: {
     marginBottom: 24,
   },
   footer: {

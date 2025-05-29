@@ -53,7 +53,7 @@ export default function ChangePasswordScreen() {
     }
 
     if (!token) {
-      Alert.alert('Error', 'You must be logged in to change your password');
+      Alert.alert('Authentication Error', 'You must be logged in to change your password. Please log in again.');
       return;
     }
 
@@ -61,14 +61,50 @@ export default function ChangePasswordScreen() {
     try {
       await apiService.changePassword(token, currentPassword, newPassword);
       
+      // Clear form fields on success
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      
       Alert.alert(
-        'Success', 
-        'Password changed successfully', 
+        'Password Changed', 
+        'Your password has been successfully changed.', 
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error: any) {
       console.error('Failed to change password:', error);
-      Alert.alert('Error', error.message || 'Failed to change password. Please check your current password and try again.');
+      
+      let errorTitle = 'Password Change Failed';
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      if (error.message) {
+        if (error.message.includes('Current password is incorrect')) {
+          errorTitle = 'Incorrect Password';
+          errorMessage = 'The current password you entered is incorrect. Please check and try again.';
+        } else if (error.message.includes('Session expired') || error.message.includes('log in again')) {
+          errorTitle = 'Session Expired';
+          errorMessage = 'Your session has expired. Please log in again to change your password.';
+        } else if (error.message.includes('Connection error') || error.message.includes('internet connection')) {
+          errorTitle = 'Connection Error';
+          errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+        } else if (error.message.includes('Server connection error') || error.message.includes('backend server')) {
+          errorTitle = 'Server Unavailable';
+          errorMessage = 'The server is currently unavailable. Please try again later or contact support if the problem persists.';
+        } else if (error.message.includes('Server error') || error.message.includes('try again later')) {
+          errorTitle = 'Server Error';
+          errorMessage = 'The server encountered an error. Please try again in a few minutes.';
+        } else if (error.message.includes('different from your current')) {
+          errorTitle = 'Invalid New Password';
+          errorMessage = 'Your new password must be different from your current password.';
+        } else if (error.message.includes('security requirements')) {
+          errorTitle = 'Password Requirements';
+          errorMessage = 'Your new password does not meet the security requirements. Please ensure it has at least 8 characters.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
     }

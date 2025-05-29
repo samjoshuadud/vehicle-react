@@ -331,14 +331,56 @@ class ApiService {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to change password');
+        let errorMessage = 'Failed to change password';
+        try {
+          const error = await response.json();
+          
+          // Handle specific error cases
+          if (error.detail) {
+            if (error.detail.includes('current password') || error.detail.includes('incorrect')) {
+              errorMessage = 'Current password is incorrect. Please try again.';
+            } else if (error.detail.includes('same') || error.detail.includes('different')) {
+              errorMessage = 'New password must be different from your current password.';
+            } else if (error.detail.includes('validation') || error.detail.includes('requirements')) {
+              errorMessage = 'New password does not meet security requirements.';
+            } else {
+              errorMessage = error.detail;
+            }
+          } else if (response.status === 401) {
+            errorMessage = 'Session expired. Please log in again.';
+          } else if (response.status === 422) {
+            errorMessage = 'Current password is incorrect. Please verify and try again.';
+          } else if (response.status >= 500) {
+            errorMessage = 'Server error. Please try again later.';
+          }
+        } catch (jsonError) {
+          // If response isn't JSON, provide status-based error
+          if (response.status === 401) {
+            errorMessage = 'Session expired. Please log in again.';
+          } else if (response.status === 422) {
+            errorMessage = 'Current password is incorrect. Please verify and try again.';
+          } else if (response.status >= 500) {
+            errorMessage = 'Server error. Please try again later.';
+          } else {
+            errorMessage = `Server error (${response.status}): ${response.statusText}`;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
       return result;
     } catch (error) {
       if (error instanceof Error) {
+        // Check if it's a network/connection error
+        if (error.message.includes('fetch') || error.message.includes('network') || 
+            error.message.includes('connection') || error.message.includes('NETWORK_REQUEST_FAILED')) {
+          throw new Error('Connection error. Please check your internet connection and try again.');
+        }
+        // Check if it's a JSON parsing error (server not responding properly)
+        if (error.message.includes('JSON') || error.message.includes('parse')) {
+          throw new Error('Server connection error. Please check if the backend server is running.');
+        }
         throw error;
       }
       throw new Error('Network error during password change');

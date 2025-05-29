@@ -22,13 +22,45 @@ export default function LoginScreen() {
       Alert.alert('Missing Information', 'Please enter both email and password');
       return;
     }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
     
     setIsLoading(true);
     try {
       await login(email, password);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Login Failed', error.message || 'Invalid email or password');
+      let errorTitle = 'Login Failed';
+      let errorMessage = 'Please check your credentials and try again.';
+      
+      if (error.message) {
+        if (error.message.includes('Invalid') || error.message.includes('incorrect') || 
+            error.message.includes('wrong') || error.message.includes('authentication')) {
+          errorTitle = 'Invalid Credentials';
+          errorMessage = 'The email or password you entered is incorrect. Please check and try again.';
+        } else if (error.message.includes('Connection error') || error.message.includes('internet connection')) {
+          errorTitle = 'Connection Error';
+          errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+        } else if (error.message.includes('Server connection error') || error.message.includes('backend server')) {
+          errorTitle = 'Server Unavailable';
+          errorMessage = 'The server is currently unavailable. Please try again later or contact support if the problem persists.';
+        } else if (error.message.includes('Server error') || error.message.includes('try again later')) {
+          errorTitle = 'Server Error';
+          errorMessage = 'The server encountered an error. Please try again in a few minutes.';
+        } else if (error.message.includes('account') && error.message.includes('not found')) {
+          errorTitle = 'Account Not Found';
+          errorMessage = 'No account was found with this email address. Please check your email or sign up for a new account.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
     }

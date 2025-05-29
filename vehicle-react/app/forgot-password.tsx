@@ -45,7 +45,28 @@ export default function ForgotPasswordScreen() {
         [{ text: 'OK', onPress: () => setStep('reset') }]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send reset link');
+      let errorTitle = 'Unable to Send Reset Code';
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      if (error.message) {
+        if (error.message.includes('Connection error') || error.message.includes('internet connection')) {
+          errorTitle = 'Connection Error';
+          errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+        } else if (error.message.includes('Server connection error') || error.message.includes('backend server')) {
+          errorTitle = 'Server Unavailable';
+          errorMessage = 'The server is currently unavailable. Please try again later or contact support if the problem persists.';
+        } else if (error.message.includes('not found') || error.message.includes('does not exist')) {
+          errorTitle = 'Email Not Found';
+          errorMessage = 'No account was found with this email address. Please check your email and try again.';
+        } else if (error.message.includes('Server error') || error.message.includes('try again later')) {
+          errorTitle = 'Server Error';
+          errorMessage = 'The server encountered an error. Please try again in a few minutes.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -54,6 +75,11 @@ export default function ForgotPasswordScreen() {
   const handlePasswordReset = async () => {
     if (!resetToken || !newPassword || !confirmPassword) {
       Alert.alert('Missing Information', 'Please fill in all fields');
+      return;
+    }
+
+    if (resetToken.length !== 6) {
+      Alert.alert('Invalid Reset Code', 'Please enter the complete 6-digit reset code');
       return;
     }
 
@@ -77,7 +103,31 @@ export default function ForgotPasswordScreen() {
         [{ text: 'OK', onPress: () => router.replace('/login') }]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to reset password');
+      let errorTitle = 'Password Reset Failed';
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      if (error.message) {
+        if (error.message.includes('Invalid') || error.message.includes('code') || error.message.includes('token')) {
+          errorTitle = 'Invalid Reset Code';
+          errorMessage = 'The reset code is invalid or has expired. Please request a new reset code and try again.';
+        } else if (error.message.includes('expired')) {
+          errorTitle = 'Code Expired';
+          errorMessage = 'The reset code has expired. Please request a new reset code.';
+        } else if (error.message.includes('Connection error') || error.message.includes('internet connection')) {
+          errorTitle = 'Connection Error';
+          errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+        } else if (error.message.includes('Server connection error') || error.message.includes('backend server')) {
+          errorTitle = 'Server Unavailable';
+          errorMessage = 'The server is currently unavailable. Please try again later or contact support if the problem persists.';
+        } else if (error.message.includes('Server error') || error.message.includes('try again later')) {
+          errorTitle = 'Server Error';
+          errorMessage = 'The server encountered an error. Please try again in a few minutes.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
     }
