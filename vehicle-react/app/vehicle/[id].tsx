@@ -19,7 +19,7 @@ import { convertDistance, formatDistance } from '@/utils/units';
 // Transform API reminder to UI reminder format for vehicle-specific filtering
 const transformReminder = (apiReminder: APIReminder): UIReminder => ({
   id: apiReminder.reminder_id.toString(),
-  vehicleId: apiReminder.user_id.toString(), // This will be fixed when the API is updated
+  vehicleId: apiReminder.vehicle_id?.toString() || '', // Use vehicle_id from API
   title: apiReminder.title,
   description: apiReminder.description || '',
   date: apiReminder.due_date,
@@ -585,9 +585,10 @@ export default function VehicleDetailScreen() {
                 <Text style={styles.loadingText}>Loading reminders...</Text>
               </View>
             ) : (() => {
-              // Filter reminders for this vehicle (when API is updated with vehicle_id)
-              // For now, show all reminders since the API doesn't have vehicle_id field
-              const vehicleReminders = reminders.map(transformReminder);
+              // Filter reminders for this specific vehicle using vehicle_id
+              const vehicleReminders = reminders
+                .map(transformReminder)
+                .filter(reminder => reminder.vehicleId === id);
               
               return vehicleReminders.length > 0 ? (
                 <ScrollView 
