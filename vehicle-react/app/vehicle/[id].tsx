@@ -53,7 +53,7 @@ export default function VehicleDetailScreen() {
       setIsLoading(true);
       try {
         // First try to find the vehicle in context
-        const contextVehicle = vehicles.find(v => v.vehicle_id?.toString() === id);
+        const contextVehicle = vehicles.find((v: Vehicle) => v.vehicle_id?.toString() === id);
         if (contextVehicle) {
           setVehicle(contextVehicle);
         } else {
@@ -213,8 +213,8 @@ export default function VehicleDetailScreen() {
               await apiService.deleteMaintenanceLog(token, log.maintenance_id);
               
               // Remove the deleted log from the state
-              setMaintenanceLogs(prevLogs => 
-                prevLogs.filter(l => l.maintenance_id !== log.maintenance_id)
+              setMaintenanceLogs((prevLogs: MaintenanceLog[]) => 
+                prevLogs.filter((l: MaintenanceLog) => l.maintenance_id !== log.maintenance_id)
               );
               
               Alert.alert('Success', 'Maintenance log deleted successfully');
@@ -278,8 +278,8 @@ export default function VehicleDetailScreen() {
               await apiService.deleteFuelLog(token, log.fuel_id);
               
               // Remove the deleted log from the state
-              setFuelLogs(prevLogs => 
-                prevLogs.filter(l => l.fuel_id !== log.fuel_id)
+              setFuelLogs((prevLogs: FuelLog[]) => 
+                prevLogs.filter((l: FuelLog) => l.fuel_id !== log.fuel_id)
               );
               
               Alert.alert('Success', `${fuelType.charAt(0).toUpperCase() + fuelType.slice(1)} log deleted successfully`);

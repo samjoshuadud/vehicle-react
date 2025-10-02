@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { router, Stack } from 'expo-router';
+import { router, Slot } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, Platform, StatusBar as RNStatusBar, View } from 'react-native';
 import 'react-native-get-random-values'; // Must be imported before Firebase
@@ -45,29 +45,7 @@ function AuthAwareLayout() {
 
   return (
     <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack 
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: '#F9FAFB' }
-        }}
-      >
-        <Stack.Screen name="login" />
-        <Stack.Screen name="signup" />
-        <Stack.Screen name="forgot-password" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="vehicle/[id]" />
-        <Stack.Screen name="add-vehicle" />
-        <Stack.Screen name="add-maintenance/[vehicleId]" />
-        <Stack.Screen name="add-fuel/[vehicleId]" />
-        <Stack.Screen name="add-reminder/[vehicleId]" />
-        <Stack.Screen name="edit-vehicle/[id]" />
-        <Stack.Screen name="edit-maintenance/[id]" />
-        <Stack.Screen name="edit-fuel/[id]" />
-        <Stack.Screen name="edit-reminder/[id]" />
-        <Stack.Screen name="edit-profile" />
-        <Stack.Screen name="change-password" />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+      <Slot />
     </NavigationThemeProvider>
   );
 }
@@ -92,18 +70,18 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <ThemeInitializer>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AuthProvider>
           <VehiclesProvider>
             <RemindersProvider>
-              <SafeAreaProvider>
+              <ThemeInitializer>
                 <AuthAwareLayout />
-              </SafeAreaProvider>
+              </ThemeInitializer>
             </RemindersProvider>
           </VehiclesProvider>
-        </ThemeInitializer>
-      </AuthProvider>
-    </ThemeProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
