@@ -4,7 +4,11 @@ from ..database.database import get_db
 from ..models import models
 from ..schemas import schemas
 from ..utils.auth import get_current_active_user
+from ..services.mileage_service import MileageService
 from typing import List
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/fuel",
@@ -32,9 +36,15 @@ async def create_fuel_log(
     db_fuel = models.Fuel(**fuel.model_dump())
     db.add(db_fuel)
     
-    # Update vehicle's current mileage if odometer reading is provided
-    if fuel.odometer_reading and fuel.odometer_reading > vehicle.current_mileage:
-        vehicle.current_mileage = fuel.odometer_reading
+    # 🚗 UPDATED: Use centralized mileage service
+    if fuel.odometer_reading:
+        success, message = MileageService.update_vehicle_mileage(
+            db, fuel.vehicle_id, fuel.odometer_reading
+        )
+        if success:
+            logger.info(f"Fuel creation: {message}")
+        else:
+            logger.warning(f"Mileage update failed during fuel creation: {message}")
     
     db.commit()
     db.refresh(db_fuel)
@@ -106,13 +116,15 @@ async def update_fuel_log(
     for key, value in fuel_update.model_dump(exclude_unset=True).items():
         setattr(fuel, key, value)
 
-    # Update vehicle's current mileage if new odometer reading is higher
+    # 🚗 UPDATED: Use centralized mileage service
     if fuel_update.odometer_reading:
-        vehicle = db.query(models.Vehicle).filter(
-            models.Vehicle.vehicle_id == fuel.vehicle_id
-        ).first()
-        if fuel_update.odometer_reading > vehicle.current_mileage:
-            vehicle.current_mileage = fuel_update.odometer_reading
+        success, message = MileageService.update_vehicle_mileage(
+            db, fuel.vehicle_id, fuel_update.odometer_reading
+        )
+        if success:
+            logger.info(f"Fuel update: {message}")
+        else:
+            logger.warning(f"Mileage update failed during fuel update: {message}")
 
     db.commit()
     db.refresh(fuel)
@@ -134,7 +146,16 @@ async def delete_fuel_log(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Fuel log not found"
         )
-        
+    
+    vehicle_id = fuel.vehicle_id
     db.delete(fuel)
+    
+    # 🚗 NEW: Recalculate vehicle mileage after deletion
+    success, message = MileageService.sync_vehicle_mileage(db, vehicle_id)
+    if success:
+        logger.info(f"Fuel deletion: {message}")
+    else:
+        logger.warning(f"Mileage sync failed after fuel deletion: {message}")
+        
     db.commit()
     return {"ok": True}

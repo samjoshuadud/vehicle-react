@@ -90,20 +90,53 @@ class ApiService {
     this.baseUrl = API_BASE_URL;
   }
 
+  // Helper method to safely parse error responses
+  private async parseErrorResponse(response: Response, defaultMessage: string): Promise<string> {
+    try {
+      const error = await response.json();
+      
+      // Handle different error response formats
+      if (error.detail) {
+        // If detail is a string, return it directly
+        if (typeof error.detail === 'string') {
+          return error.detail;
+        }
+        
+        // If detail is an array (validation errors), format them nicely
+        if (Array.isArray(error.detail)) {
+          return error.detail
+            .map((err: any) => err.msg || 'Validation error')
+            .join(', ');
+        }
+        
+        // If detail is an object, try to stringify it
+        return JSON.stringify(error.detail);
+      }
+      
+      // Fallback to message field or default message
+      return error.message || defaultMessage;
+    } catch (parseError) {
+      // If response is not JSON, use the status text or default message
+      return response.statusText || defaultMessage;
+    }
+  }
+
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      const formData = new FormData();
-      formData.append('username', email); // FastAPI expects 'username' for email
-      formData.append('password', password);
+      // Manually create form-encoded data to ensure compatibility
+      const formData = `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
 
       const response = await fetch(`${this.baseUrl}/auth/token`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
         body: formData,
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Login failed');
+        const errorMessage = await this.parseErrorResponse(response, 'Login failed');
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -613,8 +646,8 @@ class ApiService {
 
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to create maintenance log');
+        const errorMessage = await this.parseErrorResponse(response, 'Failed to create maintenance log');
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();

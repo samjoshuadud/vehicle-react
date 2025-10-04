@@ -7,6 +7,7 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, To
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import FormHeader from '@/components/FormHeader';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { apiService, MaintenanceLog } from '@/services/api';
@@ -27,6 +28,8 @@ export default function EditMaintenanceLogScreen() {
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [originalData, setOriginalData] = useState<any>(null);
 
   useEffect(() => {
     const loadMaintenanceLog = async () => {
@@ -133,6 +136,7 @@ export default function EditMaintenanceLogScreen() {
       };
 
       await apiService.updateMaintenanceLog(token, maintenance.maintenance_id, updatedData);
+      setHasUnsavedChanges(false); // Reset unsaved changes flag
       Alert.alert('Success', 'Maintenance log updated successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
@@ -184,16 +188,10 @@ export default function EditMaintenanceLogScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
       >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Maintenance Log</Text>
-          <View style={styles.headerRight} />
-        </View>
+        <FormHeader 
+          title="Edit Maintenance Log"
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}

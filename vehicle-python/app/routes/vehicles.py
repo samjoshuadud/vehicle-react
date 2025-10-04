@@ -4,6 +4,7 @@ from ..database.database import get_db
 from ..models import models
 from ..schemas import schemas
 from ..utils.auth import get_current_active_user
+from ..services.mileage_service import MileageService
 from typing import List
 
 router = APIRouter(
@@ -63,6 +64,42 @@ async def read_vehicle(
             detail="Vehicle not found"
         )
     return vehicle
+
+@router.get("/{vehicle_id}/mileage", response_model=dict)
+async def get_vehicle_mileage_info(
+    vehicle_id: int,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get vehicle mileage information for forms.
+    Returns current mileage, latest from logs, and suggested next mileage.
+    """
+    vehicle = db.query(models.Vehicle).filter(
+        models.Vehicle.vehicle_id == vehicle_id,
+        models.Vehicle.user_id == current_user.user_id
+    ).first()
+    
+    if not vehicle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vehicle not found"
+        )
+    
+    # Get latest mileage from all logs
+    latest_from_logs = MileageService.get_latest_mileage_from_logs(db, vehicle_id)
+    
+    # Suggested next mileage (current + 1 for convenience)
+    current_mileage = vehicle.current_mileage or 0
+    suggested_mileage = max(current_mileage, latest_from_logs) + 1
+    
+    return {
+        "vehicle_id": vehicle_id,
+        "current_mileage": current_mileage,
+        "latest_from_logs": latest_from_logs,
+        "suggested_next_mileage": suggested_mileage,
+        "is_synced": current_mileage == latest_from_logs
+    }
 
 @router.put("/{vehicle_id}", response_model=schemas.Vehicle)
 async def update_vehicle(

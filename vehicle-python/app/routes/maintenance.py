@@ -4,7 +4,11 @@ from ..database.database import get_db
 from ..models import models
 from ..schemas import schemas
 from ..utils.auth import get_current_active_user
+from ..services.mileage_service import MileageService
 from typing import List
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/maintenance",
@@ -29,8 +33,20 @@ async def create_maintenance(
             detail="Vehicle not found"
         )
 
+    # Create maintenance record
     db_maintenance = models.Maintenance(**maintenance.model_dump())
     db.add(db_maintenance)
+    
+    # 🚗 NEW: Update vehicle mileage using centralized service
+    if maintenance.mileage:
+        success, message = MileageService.update_vehicle_mileage(
+            db, maintenance.vehicle_id, maintenance.mileage
+        )
+        if success:
+            logger.info(f"Maintenance creation: {message}")
+        else:
+            logger.warning(f"Mileage update failed during maintenance creation: {message}")
+    
     db.commit()
     db.refresh(db_maintenance)
     return db_maintenance
@@ -101,6 +117,16 @@ async def update_maintenance(
     for key, value in maintenance_update.model_dump(exclude_unset=True).items():
         setattr(maintenance, key, value)
 
+    # 🚗 NEW: Update vehicle mileage if mileage was updated
+    if maintenance_update.mileage:
+        success, message = MileageService.update_vehicle_mileage(
+            db, maintenance.vehicle_id, maintenance_update.mileage
+        )
+        if success:
+            logger.info(f"Maintenance update: {message}")
+        else:
+            logger.warning(f"Mileage update failed during maintenance update: {message}")
+
     db.commit()
     db.refresh(maintenance)
     return maintenance
@@ -121,7 +147,17 @@ async def delete_maintenance(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Maintenance log not found"
         )
-        
+    
+    vehicle_id = maintenance.vehicle_id
     db.delete(maintenance)
+    
+    # 🚗 NEW: Recalculate vehicle mileage after deletion
+    # This ensures mileage stays accurate even when logs are deleted
+    success, message = MileageService.sync_vehicle_mileage(db, vehicle_id)
+    if success:
+        logger.info(f"Maintenance deletion: {message}")
+    else:
+        logger.warning(f"Mileage sync failed after maintenance deletion: {message}")
+    
     db.commit()
     return {"ok": True}

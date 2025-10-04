@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import FormHeader from '@/components/FormHeader';
 import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
 import { useVehicles } from '@/context/VehiclesContext';
@@ -26,7 +27,23 @@ export default function AddVehicleScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [base64Image, setBase64Image] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { statusBarStyle, backgroundColor, distanceUnit } = useTheme();
+
+  // Track form changes for unsaved changes detection
+  useEffect(() => {
+    const hasChanges = make.trim() !== '' || 
+                      model.trim() !== '' || 
+                      year.trim() !== '' ||
+                      color.trim() !== '' ||
+                      licensePlate.trim() !== '' ||
+                      vin.trim() !== '' ||
+                      mileage.trim() !== '' ||
+                      fuelType.trim() !== '' ||
+                      purchaseDate.trim() !== '' ||
+                      imageUri !== null;
+    setHasUnsavedChanges(hasChanges);
+  }, [make, model, year, color, licensePlate, vin, mileage, fuelType, purchaseDate, imageUri]);
 
   const pickImage = async () => {
     // Request permissions
@@ -112,6 +129,7 @@ export default function AddVehicleScreen() {
 
       await addVehicle(vehicleData);
       
+      setHasUnsavedChanges(false); // Reset unsaved changes flag
       Alert.alert(
         'Success', 
         'Vehicle added successfully!',
@@ -140,16 +158,10 @@ export default function AddVehicleScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
       >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Vehicle</Text>
-          <View style={styles.headerRight} />
-        </View>
+        <FormHeader 
+          title="Add Vehicle"
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}

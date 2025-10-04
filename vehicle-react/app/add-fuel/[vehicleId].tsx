@@ -2,11 +2,12 @@ import { SafeArea } from '@/components/ui/SafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import FormHeader from '@/components/FormHeader';
 import { useTheme } from '@/context/ThemeContext';
 import { useVehicles } from '@/context/VehiclesContext';
 import { useAuth } from '@/context/AuthContext';
@@ -30,6 +31,19 @@ export default function AddFuelLogScreen() {
   const [isFull, setIsFull] = useState(true);
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Track form changes for unsaved changes detection
+  useEffect(() => {
+    const hasChanges = date.trim() !== '' || 
+                      liters.trim() !== '' || 
+                      cost.trim() !== '' ||
+                      mileage !== (vehicle?.current_mileage.toString() || '') ||
+                      location.trim() !== '' ||
+                      !isFull || // Default is true, so any change to false is a change
+                      notes.trim() !== '';
+    setHasUnsavedChanges(hasChanges);
+  }, [date, liters, cost, mileage, location, isFull, notes, vehicle?.current_mileage]);
 
   // Handle if vehicle not found
   if (!vehicle) {
@@ -112,6 +126,7 @@ export default function AddFuelLogScreen() {
       };
 
       await apiService.createFuelLog(token, fuelData);
+      setHasUnsavedChanges(false); // Reset unsaved changes flag
       Alert.alert('Success', 'Fuel log added successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
@@ -134,8 +149,13 @@ export default function AddFuelLogScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <View style={styles.header}>
-          <Text style={styles.heading}>{isElectric ? 'Add Charging Log' : 'Add Fuel Log'}</Text>
+        <FormHeader 
+          title={isElectric ? 'Add Charging Log' : 'Add Fuel Log'}
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
+
+        <View style={styles.vehicleInfo}>
+          <Ionicons name="car" size={20} color="#3B82F6" />
           <Text style={styles.vehicleName}>
             {vehicle.year} {vehicle.make} {vehicle.model}
           </Text>
@@ -296,6 +316,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#1F2937',
     marginLeft: 8,
+  },
+  vehicleInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F3F4F6',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   scrollContent: {
     padding: 16,

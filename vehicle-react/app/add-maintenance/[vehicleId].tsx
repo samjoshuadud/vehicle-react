@@ -2,11 +2,12 @@ import { SafeArea } from '@/components/ui/SafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import FormHeader from '@/components/FormHeader';
 import { useTheme } from '@/context/ThemeContext';
 import { useVehicles } from '@/context/VehiclesContext';
 import { useAuth } from '@/context/AuthContext';
@@ -30,6 +31,19 @@ export default function AddMaintenanceLogScreen() {
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Track form changes for unsaved changes detection
+  useEffect(() => {
+    const hasChanges = date.trim() !== '' || 
+                      type.trim() !== '' || 
+                      description.trim() !== '' ||
+                      mileage !== (vehicle?.current_mileage.toString() || '') ||
+                      cost.trim() !== '' ||
+                      location.trim() !== '' ||
+                      notes.trim() !== '';
+    setHasUnsavedChanges(hasChanges);
+  }, [date, type, description, mileage, cost, location, notes, vehicle?.current_mileage]);
 
   // Handle if vehicle not found
   if (!vehicle) {
@@ -96,6 +110,7 @@ export default function AddMaintenanceLogScreen() {
       };
 
       await apiService.createMaintenanceLog(token, maintenanceData);
+      setHasUnsavedChanges(false); // Reset unsaved changes flag
       Alert.alert('Success', 'Maintenance log added successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
@@ -114,16 +129,10 @@ export default function AddMaintenanceLogScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
       >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Maintenance Log</Text>
-          <View style={styles.headerRight} />
-        </View>
+        <FormHeader 
+          title="Add Maintenance Log"
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
 
         <View style={styles.vehicleInfo}>
           <Ionicons name="car" size={20} color="#3B82F6" />

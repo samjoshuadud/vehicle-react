@@ -7,6 +7,7 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, 
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import FormHeader from '@/components/FormHeader';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { apiService, FuelLog } from '@/services/api';
@@ -27,6 +28,18 @@ export default function EditFuelLogScreen() {
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Track changes for unsaved changes detection
+  const [originalData, setOriginalData] = useState<{
+    date: string;
+    liters: string;
+    cost: string;
+    mileage: string;
+    location: string;
+    isFull: boolean;
+    notes: string;
+  } | null>(null);
 
   useEffect(() => {
     const loadFuelLog = async () => {
@@ -40,9 +53,10 @@ export default function EditFuelLogScreen() {
         if (fuelData.kwh !== null && fuelData.kwh !== undefined) {
           setLiters(fuelData.kwh.toString());
         } else if (fuelData.liters !== null && fuelData.liters !== undefined) {
-          // Convert stored liters to user's preferred volume unit for display
-          const displayVolume = convertVolume(fuelData.liters, 'L', volumeUnit);
-          setLiters(displayVolume.toFixed(2));
+          const litersNumber = Number(fuelData.liters || 0); // fallback to 0
+const displayVolume = convertVolume(litersNumber, 'L', volumeUnit);
+setLiters(displayVolume.toFixed(2));
+
         } else {
           setLiters('');
         }
@@ -55,6 +69,22 @@ export default function EditFuelLogScreen() {
         setLocation(fuelData.location || '');
         setIsFull(fuelData.full_tank || false);
         setNotes(fuelData.notes || '');
+
+        // Store original data for change detection
+        const originalValues = {
+          date: fuelData.date,
+          liters: fuelData.kwh !== null && fuelData.kwh !== undefined 
+            ? fuelData.kwh.toString()
+            : fuelData.liters !== null && fuelData.liters !== undefined
+            ? convertVolume(Number(fuelData.liters || 0), 'L', volumeUnit).toFixed(2)
+            : '',
+          cost: fuelData.cost.toString(),
+          mileage: Math.round(convertDistance(fuelData.odometer_reading, 'km', distanceUnit)).toString(),
+          location: fuelData.location || '',
+          isFull: fuelData.full_tank || false,
+          notes: fuelData.notes || ''
+        };
+        setOriginalData(originalValues);
       } catch (error: any) {
         console.error('Failed to load fuel log:', error);
         Alert.alert('Error', 'Failed to load fuel log');
@@ -66,6 +96,27 @@ export default function EditFuelLogScreen() {
 
     loadFuelLog();
   }, [id, token]);
+
+  // Detect unsaved changes
+  useEffect(() => {
+    if (!originalData) return;
+    
+    const currentData = {
+      date,
+      liters,
+      cost,
+      mileage,
+      location,
+      isFull,
+      notes
+    };
+    
+    const hasChanges = Object.keys(originalData).some(key => 
+      originalData[key as keyof typeof originalData] !== currentData[key as keyof typeof currentData]
+    );
+    
+    setHasUnsavedChanges(hasChanges);
+  }, [date, liters, cost, mileage, location, isFull, notes, originalData]);
 
   if (isLoadingData) {
     return (
@@ -153,6 +204,7 @@ export default function EditFuelLogScreen() {
       };
 
       await apiService.updateFuelLog(token, fuel.fuel_id, updatedData);
+      setHasUnsavedChanges(false); // Reset unsaved changes flag
       Alert.alert('Success', 'Fuel log updated successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
@@ -176,16 +228,10 @@ export default function EditFuelLogScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
       >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{isElectric ? 'Edit Charging Log' : 'Edit Fuel Log'}</Text>
-          <View style={styles.headerRight} />
-        </View>
+        <FormHeader 
+          title={isElectric ? 'Edit Charging Log' : 'Edit Fuel Log'}
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -327,24 +373,6 @@ const styles = StyleSheet.create({
   },
   keyboardAvoidingView: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  headerRight: {
-    width: 40,
   },
   scrollContent: {
     padding: 16,

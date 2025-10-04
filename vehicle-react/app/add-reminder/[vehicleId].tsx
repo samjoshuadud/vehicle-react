@@ -2,11 +2,12 @@ import { SafeArea } from '@/components/ui/SafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import FormHeader from '@/components/FormHeader';
 import { useTheme } from '@/context/ThemeContext';
 import { useVehicles } from '@/context/VehiclesContext';
 import { useReminders } from '@/context/RemindersContext';
@@ -27,6 +28,17 @@ export default function AddReminderScreen() {
   const [repeatInterval, setRepeatInterval] = useState<RepeatInterval>('none');
   const [mileageInterval, setMileageInterval] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Track form changes for unsaved changes detection
+  useEffect(() => {
+    const hasChanges = title.trim() !== '' || 
+                      description.trim() !== '' || 
+                      date.trim() !== '' ||
+                      repeatInterval !== 'none' ||
+                      mileageInterval.trim() !== '';
+    setHasUnsavedChanges(hasChanges);
+  }, [title, description, date, repeatInterval, mileageInterval]);
 
   // Handle if vehicle not found
   if (!vehicle) {
@@ -80,6 +92,7 @@ export default function AddReminderScreen() {
 
       await createReminder(reminderData);
       
+      setHasUnsavedChanges(false); // Reset unsaved changes flag
       Alert.alert('Success', 'Reminder created successfully', [
         { text: 'OK', onPress: () => router.back() }
       ]);
@@ -103,16 +116,10 @@ export default function AddReminderScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
       >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Reminder</Text>
-          <View style={styles.headerRight} />
-        </View>
+        <FormHeader 
+          title="Add Reminder"
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
 
         <View style={styles.vehicleInfo}>
           <Ionicons name="car" size={20} color="#3B82F6" />
