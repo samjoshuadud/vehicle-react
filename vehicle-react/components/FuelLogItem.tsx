@@ -93,24 +93,6 @@ const FuelLogItem: React.FC<FuelLogItemProps> = ({
           </View>
           
           <View style={styles.detailItem}>
-            <Ionicons name="speedometer-outline" size={14} color="#6B7280" />
-            <Text style={styles.detailText}>
-              {(() => {
-                // Get mileage/odometer reading (assuming stored in km)
-                const storedDistance = (log.mileage !== undefined && log.mileage !== null) 
-                  ? log.mileage
-                  : (log.odometer_reading !== undefined && log.odometer_reading !== null) 
-                    ? log.odometer_reading 
-                    : 0;
-                
-                // Convert to user's preferred unit
-                const displayDistance = convertDistance(storedDistance, 'km', distanceUnit);
-                return formatDistance(displayDistance, distanceUnit, 0);
-              })()}
-            </Text>
-          </View>
-          
-          <View style={styles.detailItem}>
             <Ionicons name="location-outline" size={14} color="#6B7280" />
             <Text style={styles.detailText}>{log.location}</Text>
           </View>
