@@ -8,6 +8,7 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, To
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import DatePicker from '@/components/ui/DatePicker';
+import Select from '@/components/ui/Select';
 import FormHeader from '@/components/FormHeader';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -206,12 +207,27 @@ export default function EditMaintenanceLogScreen() {
             maximumDate={new Date()}
           />
           
-          <Input
-            label="Maintenance Type *"
-            placeholder="e.g. Oil Change, Tire Rotation"
+          <Select
+            label="Maintenance Type"
             value={type}
-            onChangeText={setType}
+            onValueChange={setType}
+            options={[
+              { label: 'Oil Change', value: 'Oil Change' },
+              { label: 'Tire Rotation', value: 'Tire Rotation' },
+              { label: 'Brake Service', value: 'Brake Service' },
+              { label: 'Air Filter Replacement', value: 'Air Filter Replacement' },
+              { label: 'Battery Replacement', value: 'Battery Replacement' },
+              { label: 'Transmission Service', value: 'Transmission Service' },
+              { label: 'Coolant Flush', value: 'Coolant Flush' },
+              { label: 'Spark Plug Replacement', value: 'Spark Plug Replacement' },
+              { label: 'Brake Pad Replacement', value: 'Brake Pad Replacement' },
+              { label: 'Wheel Alignment', value: 'Wheel Alignment' },
+              { label: 'Inspection', value: 'Inspection' },
+            ]}
+            placeholder="Select maintenance type"
+            required
             leftIcon={<Ionicons name="construct-outline" size={20} color="#6B7280" />}
+            allowCustom={true}
           />
           
           <Input

@@ -9,6 +9,7 @@ import * as FileSystem from 'expo-file-system';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import DatePicker from '@/components/ui/DatePicker';
+import Select from '@/components/ui/Select';
 import FormHeader from '@/components/FormHeader';
 import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
@@ -70,7 +71,7 @@ export default function AddVehicleScreen() {
       try {
         // Convert image to base64
         const base64 = await FileSystem.readAsStringAsync(imageUri, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding: 'base64',
         });
         // Add proper data URL prefix for image display
         const mimeType = imageUri.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
@@ -258,12 +259,21 @@ export default function AddVehicleScreen() {
               📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
             </Text>
             
-            <Input
+            <Select
               label="Fuel Type"
-              placeholder="e.g. Gasoline, Diesel, Electric"
               value={fuelType}
-              onChangeText={setFuelType}
+              onValueChange={setFuelType}
+              options={[
+                { label: 'Gasoline (Unleaded)', value: 'Gasoline (Unleaded)' },
+                { label: 'Gasoline (Premium)', value: 'Gasoline (Premium)' },
+                { label: 'Diesel', value: 'Diesel' },
+                { label: 'Electric', value: 'Electric' },
+                { label: 'Hybrid', value: 'Hybrid' },
+                { label: 'Plug-in Hybrid', value: 'Plug-in Hybrid' },
+              ]}
+              placeholder="Select fuel type"
               leftIcon={<Ionicons name="water-outline" size={20} color="#6B7280" />}
+              allowCustom={true}
             />
             
             <DatePicker
