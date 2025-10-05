@@ -24,7 +24,6 @@ export default function EditFuelLogScreen() {
   const [date, setDate] = useState('');
   const [liters, setLiters] = useState('');
   const [cost, setCost] = useState('');
-  const [mileage, setMileage] = useState('');
   const [location, setLocation] = useState('');
   const [isFull, setIsFull] = useState(true);
   const [notes, setNotes] = useState('');
@@ -37,7 +36,6 @@ export default function EditFuelLogScreen() {
     date: string;
     liters: string;
     cost: string;
-    mileage: string;
     location: string;
     isFull: boolean;
     notes: string;
@@ -64,10 +62,6 @@ setLiters(displayVolume.toFixed(2));
         }
         setCost(fuelData.cost.toString());
         
-        // Convert stored km to user's preferred distance unit for display
-        const displayMileage = convertDistance(fuelData.odometer_reading, 'km', distanceUnit);
-        setMileage(Math.round(displayMileage).toString());
-        
         setLocation(fuelData.location || '');
         setIsFull(fuelData.full_tank || false);
         setNotes(fuelData.notes || '');
@@ -81,7 +75,6 @@ setLiters(displayVolume.toFixed(2));
             ? convertVolume(Number(fuelData.liters || 0), 'L', volumeUnit).toFixed(2)
             : '',
           cost: fuelData.cost.toString(),
-          mileage: Math.round(convertDistance(fuelData.odometer_reading, 'km', distanceUnit)).toString(),
           location: fuelData.location || '',
           isFull: fuelData.full_tank || false,
           notes: fuelData.notes || ''
@@ -107,7 +100,6 @@ setLiters(displayVolume.toFixed(2));
       date,
       liters,
       cost,
-      mileage,
       location,
       isFull,
       notes
@@ -118,7 +110,7 @@ setLiters(displayVolume.toFixed(2));
     );
     
     setHasUnsavedChanges(hasChanges);
-  }, [date, liters, cost, mileage, location, isFull, notes, originalData]);
+  }, [date, liters, cost, location, isFull, notes, originalData]);
 
   if (isLoadingData) {
     return (
@@ -148,7 +140,7 @@ setLiters(displayVolume.toFixed(2));
 
   const handleSave = async () => {
     // Validate form fields
-    if (!date || !cost || !mileage || !location) {
+    if (!date || !cost || !location) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
@@ -157,13 +149,6 @@ setLiters(displayVolume.toFixed(2));
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
       Alert.alert('Invalid Date', 'Please enter date in YYYY-MM-DD format');
-      return;
-    }
-
-    // Validate mileage format
-    const mileageNum = parseInt(mileage, 10);
-    if (isNaN(mileageNum) || mileageNum < 0) {
-      Alert.alert('Invalid Mileage', 'Please enter a valid mileage value');
       return;
     }
 
@@ -191,12 +176,8 @@ setLiters(displayVolume.toFixed(2));
 
     setIsLoading(true);
     try {
-      // Convert user input to metric units for storage
-      const mileageInKm = Math.round(convertDistance(mileageNum, distanceUnit, 'km'));
-      
       const updatedData: Partial<FuelLog> = {
         date,
-        odometer_reading: mileageInKm,
         liters: (!isElectric && fuelAmount !== undefined) ? convertVolume(fuelAmount, volumeUnit, 'L') : undefined,
         kwh: (isElectric && fuelAmount !== undefined) ? fuelAmount : undefined,
         cost: costNum,
@@ -280,18 +261,6 @@ setLiters(displayVolume.toFixed(2));
             keyboardType="decimal-pad"
             leftIcon={<Ionicons name="cash-outline" size={20} color="#6B7280" />}
           />
-          
-          <Input
-            label="Odometer Reading *"
-            placeholder={`Current vehicle mileage (${distanceUnit})`}
-            value={mileage}
-            onChangeText={setMileage}
-            keyboardType="number-pad"
-            leftIcon={<Ionicons name="speedometer-outline" size={20} color="#6B7280" />}
-          />
-          <Text style={styles.unitReminder}>
-            📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
-          </Text>
           
           <LocationPicker
             label="Location"

@@ -28,7 +28,6 @@ export default function AddFuelLogScreen() {
   const [date, setDate] = useState('');
   const [liters, setLiters] = useState('');
   const [cost, setCost] = useState('');
-  const [mileage, setMileage] = useState(vehicle?.current_mileage.toString() || '');
   const [location, setLocation] = useState('');
   const [isFull, setIsFull] = useState(true);
   const [notes, setNotes] = useState('');
@@ -40,12 +39,11 @@ export default function AddFuelLogScreen() {
     const hasChanges = date.trim() !== '' || 
                       liters.trim() !== '' || 
                       cost.trim() !== '' ||
-                      mileage !== (vehicle?.current_mileage.toString() || '') ||
                       location.trim() !== '' ||
                       !isFull || // Default is true, so any change to false is a change
                       notes.trim() !== '';
     setHasUnsavedChanges(hasChanges);
-  }, [date, liters, cost, mileage, location, isFull, notes, vehicle?.current_mileage]);
+  }, [date, liters, cost, location, isFull, notes]);
 
   // Handle if vehicle not found
   if (!vehicle) {
@@ -64,7 +62,7 @@ export default function AddFuelLogScreen() {
 
   const handleSave = async () => {
     // Validate form fields
-    if (!date || !cost || !mileage || !location) {
+    if (!date || !cost || !location) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
@@ -73,13 +71,6 @@ export default function AddFuelLogScreen() {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
       Alert.alert('Invalid Date', 'Please enter date in YYYY-MM-DD format');
-      return;
-    }
-
-    // Validate mileage format
-    const mileageNum = parseInt(mileage, 10);
-    if (isNaN(mileageNum) || mileageNum < 0) {
-      Alert.alert('Invalid Mileage', 'Please enter a valid mileage value');
       return;
     }
 
@@ -106,8 +97,6 @@ export default function AddFuelLogScreen() {
 
     setIsLoading(true);
     try {
-      // Convert user input to metric units for storage
-      const mileageInKm = Math.round(convertDistance(mileageNum, distanceUnit, 'km'));
       let litersInMetric = undefined;
       
       if (!isElectric && liters) {
@@ -118,7 +107,6 @@ export default function AddFuelLogScreen() {
       const fuelData: Partial<FuelLog> = {
         vehicle_id: vehicle.vehicle_id,
         date,
-        odometer_reading: mileageInKm,
         liters: litersInMetric,
         kwh: (isElectric && liters) ? parseFloat(liters) : undefined,
         cost: costNum,
@@ -208,18 +196,6 @@ export default function AddFuelLogScreen() {
             keyboardType="decimal-pad"
             leftIcon={<Ionicons name="cash-outline" size={20} color="#6B7280" />}
           />
-          
-          <Input
-            label="Odometer Reading *"
-            placeholder={`Current vehicle mileage (${distanceUnit})`}
-            value={mileage}
-            onChangeText={setMileage}
-            keyboardType="number-pad"
-            leftIcon={<Ionicons name="speedometer-outline" size={20} color="#6B7280" />}
-          />
-          <Text style={styles.unitReminder}>
-            📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
-          </Text>
           
           <LocationPicker
             label="Location"

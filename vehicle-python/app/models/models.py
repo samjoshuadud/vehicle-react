@@ -65,7 +65,6 @@ class Fuel(Base):
     liters = Column(DECIMAL(10,2))
     kwh = Column(DECIMAL(10,2))  # For electric vehicles
     cost = Column(DECIMAL(10,2))
-    odometer_reading = Column(Integer)
     location = Column(String(100))
     full_tank = Column(Boolean, default=False)
     notes = Column(Text)

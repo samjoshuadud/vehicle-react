@@ -58,7 +58,7 @@ class MileageService:
     @staticmethod
     def get_latest_mileage_from_logs(db: Session, vehicle_id: int) -> int:
         """
-        Get the highest mileage from all logs (fuel + maintenance).
+        Get the highest mileage from maintenance logs only.
         Used for data consistency checks and corrections.
         
         Args:
@@ -66,16 +66,9 @@ class MileageService:
             vehicle_id: ID of the vehicle
             
         Returns:
-            Highest mileage found across all logs
+            Highest mileage found in maintenance logs
         """
         try:
-            # Get highest fuel log mileage
-            fuel_max = db.query(models.Fuel.odometer_reading)\
-                .filter(models.Fuel.vehicle_id == vehicle_id)\
-                .filter(models.Fuel.odometer_reading.isnot(None))\
-                .order_by(models.Fuel.odometer_reading.desc())\
-                .first()
-                
             # Get highest maintenance log mileage
             maintenance_max = db.query(models.Maintenance.mileage)\
                 .filter(models.Maintenance.vehicle_id == vehicle_id)\
@@ -83,10 +76,9 @@ class MileageService:
                 .order_by(models.Maintenance.mileage.desc())\
                 .first()
                 
-            fuel_mileage = fuel_max[0] if fuel_max else 0
             maintenance_mileage = maintenance_max[0] if maintenance_max else 0
             
-            return max(fuel_mileage, maintenance_mileage, 0)
+            return maintenance_mileage
             
         except Exception as e:
             logger.error(f"Error getting latest mileage from logs: {str(e)}")
