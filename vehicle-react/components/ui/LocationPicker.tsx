@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -21,6 +21,7 @@ interface LocationPickerProps {
   onChangeLocation: (location: string, coordinates?: { latitude: number; longitude: number }) => void;
   required?: boolean;
   error?: string;
+  showGasStations?: boolean; // Show gas stations on the map
 }
 
 interface SearchResult {
@@ -35,6 +36,7 @@ export default function LocationPicker({
   onChangeLocation,
   required = false,
   error,
+  showGasStations = false,
 }: LocationPickerProps) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -43,7 +45,30 @@ export default function LocationPicker({
   const [isSearching, setIsSearching] = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [mapCenter, setMapCenter] = useState({ latitude: 14.5995, longitude: 120.9842 }); // Default to Manila
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const webViewRef = useRef<WebView>(null);
+
+  // Get user's current location for search biasing
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const location = await Location.getCurrentPositionAsync({});
+          setUserLocation({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          });
+          setMapCenter({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          });
+        }
+      } catch (error) {
+        console.log('Could not get initial location:', error);
+      }
+    })();
+  }, []);
 
   // OpenStreetMap HTML with Leaflet
   const getMapHTML = () => {
@@ -61,25 +86,78 @@ export default function LocationPicker({
             * { margin: 0; padding: 0; box-sizing: border-box; }
             html, body { height: 100%; }
             #map { height: 100%; width: 100%; }
+            
+            /* Custom gas station marker */
+            .gas-station-marker {
+              background-color: #EF4444;
+              width: 10px;
+              height: 10px;
+              border-radius: 50%;
+              border: 2px solid white;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            }
+            
+            /* Custom selected marker */
+            .custom-marker {
+              background-color: #3B82F6;
+              width: 24px;
+              height: 24px;
+              border-radius: 50% 50% 50% 0;
+              transform: rotate(-45deg);
+              border: 3px solid white;
+              box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+            }
+            
+            .custom-marker::after {
+              content: '';
+              width: 8px;
+              height: 8px;
+              background: white;
+              position: absolute;
+              border-radius: 50%;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+            }
           </style>
         </head>
         <body>
           <div id="map"></div>
           
           <script>
-            let map, marker;
+            let map, marker, gasStationMarkers = [];
+            const showGasStations = ${showGasStations};
             
-            // Initialize map
-            map = L.map('map').setView([${lat}, ${lng}], 15);
+            // Initialize map with better tile layer (CartoDB Voyager - cleaner look)
+            map = L.map('map', {
+              zoomControl: true,
+              attributionControl: false
+            }).setView([${lat}, ${lng}], 15);
             
-            // Add OpenStreetMap tiles
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              attribution: '© OpenStreetMap contributors',
-              maxZoom: 19
+            // Use CartoDB Voyager tiles for a cleaner, Google Maps-like appearance
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+              attribution: '© OpenStreetMap, © CartoDB',
+              maxZoom: 19,
+              subdomains: 'abcd'
             }).addTo(map);
             
-            // Add marker
-            marker = L.marker([${lat}, ${lng}], { draggable: true }).addTo(map);
+            // Create custom icon for main marker
+            const customIcon = L.divIcon({
+              className: 'custom-marker',
+              iconSize: [24, 24],
+              iconAnchor: [12, 24]
+            });
+            
+            // Add marker with custom icon
+            marker = L.marker([${lat}, ${lng}], { 
+              draggable: true,
+              icon: customIcon
+            }).addTo(map);
+            
+            // Load gas stations if enabled
+            if (showGasStations) {
+              loadGasStations(${lat}, ${lng});
+            }
             
             // Handle map clicks
             map.on('click', function(e) {
@@ -88,8 +166,20 @@ export default function LocationPicker({
             
             // Handle marker drag
             marker.on('dragend', function(e) {
-              placeMarker(e.target.getLatLng());
+              const latlng = e.target.getLatLng();
+              placeMarker(latlng);
+              if (showGasStations) {
+                loadGasStations(latlng.lat, latlng.lng);
+              }
             });
+            
+            // Handle map move to load gas stations in new area
+            if (showGasStations) {
+              map.on('moveend', function() {
+                const center = map.getCenter();
+                loadGasStations(center.lat, center.lng);
+              });
+            }
             
             function placeMarker(latlng) {
               marker.setLatLng(latlng);
@@ -116,10 +206,67 @@ export default function LocationPicker({
                 });
             }
             
+            // Load nearby gas stations
+            function loadGasStations(lat, lng) {
+              // Clear existing gas station markers
+              gasStationMarkers.forEach(m => map.removeLayer(m));
+              gasStationMarkers = [];
+              
+              // Query Overpass API for gas stations
+              const overpassQuery = \`
+                [out:json][timeout:25];
+                (
+                  node["amenity"="fuel"](around:2000,\${lat},\${lng});
+                  way["amenity"="fuel"](around:2000,\${lat},\${lng});
+                );
+                out center;
+              \`;
+              
+              fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: overpassQuery
+              })
+              .then(response => response.json())
+              .then(data => {
+                const gasIcon = L.divIcon({
+                  className: 'gas-station-marker',
+                  iconSize: [10, 10],
+                  iconAnchor: [5, 5]
+                });
+                
+                data.elements.forEach(element => {
+                  const elementLat = element.lat || element.center?.lat;
+                  const elementLon = element.lon || element.center?.lon;
+                  
+                  if (elementLat && elementLon) {
+                    const gasMarker = L.marker([elementLat, elementLon], { 
+                      icon: gasIcon 
+                    });
+                    
+                    const name = element.tags?.name || 'Gas Station';
+                    const brand = element.tags?.brand || '';
+                    gasMarker.bindPopup(\`<b>\${name}</b>\${brand ? '<br>' + brand : ''}\`);
+                    
+                    gasMarker.on('click', function() {
+                      marker.setLatLng([elementLat, elementLon]);
+                      placeMarker({ lat: elementLat, lng: elementLon });
+                    });
+                    
+                    gasMarker.addTo(map);
+                    gasStationMarkers.push(gasMarker);
+                  }
+                });
+              })
+              .catch(error => console.error('Error loading gas stations:', error));
+            }
+            
             // Function to update map center (called from React Native)
             function updateMapCenter(lat, lng) {
               map.setView([lat, lng], 15);
               marker.setLatLng([lat, lng]);
+              if (showGasStations) {
+                loadGasStations(lat, lng);
+              }
             }
           </script>
         </body>
@@ -153,18 +300,73 @@ export default function LocationPicker({
 
     setIsSearching(true);
     try {
-      // Use Nominatim API for geocoding (free, no API key needed)
+      // Build search URL with location biasing
+      const searchLat = userLocation?.latitude || mapCenter.latitude;
+      const searchLng = userLocation?.longitude || mapCenter.longitude;
+      
+      // If showing gas stations, prioritize fuel stations in search
+      const searchQuery = showGasStations && !query.toLowerCase().includes('gas') && !query.toLowerCase().includes('fuel') && !query.toLowerCase().includes('station')
+        ? `${query} gas station`
+        : query;
+      
+      // Use Nominatim API with viewbox to bias results to current area
+      const viewbox = `${searchLng - 0.5},${searchLat + 0.5},${searchLng + 0.5},${searchLat - 0.5}`;
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
+        `https://nominatim.openstreetmap.org/search?` +
+        `format=json&` +
+        `q=${encodeURIComponent(searchQuery)}&` +
+        `limit=10&` +
+        `viewbox=${viewbox}&` +
+        `bounded=1&` +
+        `addressdetails=1`
       );
-      const data = await response.json();
-      setSearchResults(data);
+      let data = await response.json();
+      
+      // If bounded search returns no results, try unbounded
+      if (data.length === 0) {
+        const unboundedResponse = await fetch(
+          `https://nominatim.openstreetmap.org/search?` +
+          `format=json&` +
+          `q=${encodeURIComponent(searchQuery)}&` +
+          `limit=10&` +
+          `viewbox=${viewbox}&` +
+          `addressdetails=1`
+        );
+        data = await unboundedResponse.json();
+      }
+      
+      // Sort results by distance from current location
+      const resultsWithDistance = data.map((result: any) => ({
+        ...result,
+        distance: calculateDistance(
+          searchLat,
+          searchLng,
+          parseFloat(result.lat),
+          parseFloat(result.lon)
+        )
+      }));
+      
+      resultsWithDistance.sort((a: any, b: any) => a.distance - b.distance);
+      setSearchResults(resultsWithDistance);
     } catch (error) {
       console.error('Error searching location:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
+  };
+
+  // Calculate distance between two coordinates (Haversine formula)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   };
 
   const handleSearchChange = (text: string) => {
@@ -316,18 +518,36 @@ export default function LocationPicker({
           {/* Search Results */}
           {searchResults.length > 0 && (
             <ScrollView style={styles.searchResults}>
-              {searchResults.map((result, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.searchResultItem}
-                  onPress={() => handleSelectSearchResult(result)}
-                >
-                  <Ionicons name="location" size={20} color="#6B7280" />
-                  <Text style={styles.searchResultText} numberOfLines={2}>
-                    {result.display_name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {searchResults.map((result: any, index) => {
+                const isGasStation = result.type === 'fuel' || 
+                                     result.class === 'amenity' || 
+                                     result.display_name?.toLowerCase().includes('gas') ||
+                                     result.display_name?.toLowerCase().includes('fuel') ||
+                                     result.display_name?.toLowerCase().includes('petrol');
+                const distance = result.distance ? `${result.distance.toFixed(1)} km` : '';
+                
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.searchResultItem}
+                    onPress={() => handleSelectSearchResult(result)}
+                  >
+                    <Ionicons 
+                      name={isGasStation ? "business" : "location"} 
+                      size={20} 
+                      color={isGasStation ? "#EF4444" : "#6B7280"} 
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.searchResultText} numberOfLines={2}>
+                        {result.display_name}
+                      </Text>
+                      {distance && (
+                        <Text style={styles.searchResultDistance}>{distance} away</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           )}
 
@@ -359,7 +579,9 @@ export default function LocationPicker({
           <View style={styles.infoContainer}>
             <Ionicons name="information-circle-outline" size={16} color="#6B7280" />
             <Text style={styles.infoText}>
-              Tap on the map, drag the marker, or search to select a location
+              {showGasStations 
+                ? 'Red dots are gas stations. Tap any location, drag the marker, or search'
+                : 'Tap on the map, drag the marker, or search to select a location'}
             </Text>
           </View>
 
@@ -504,9 +726,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   searchResultText: {
-    flex: 1,
     fontSize: 14,
     color: '#374151',
+    fontWeight: '500',
+  },
+  searchResultDistance: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   searchingContainer: {
     flexDirection: 'row',

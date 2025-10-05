@@ -64,7 +64,7 @@ export default function AddFuelLogScreen() {
 
   const handleSave = async () => {
     // Validate form fields
-    if (!date || !cost || !mileage) {
+    if (!date || !cost || !mileage || !location) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
@@ -107,7 +107,7 @@ export default function AddFuelLogScreen() {
     setIsLoading(true);
     try {
       // Convert user input to metric units for storage
-      const mileageInKm = convertDistance(mileageNum, distanceUnit, 'km');
+      const mileageInKm = Math.round(convertDistance(mileageNum, distanceUnit, 'km'));
       let litersInMetric = undefined;
       
       if (!isElectric && liters) {
@@ -226,6 +226,7 @@ export default function AddFuelLogScreen() {
             value={location}
             onChangeLocation={(newLocation) => setLocation(newLocation)}
             required
+            showGasStations={true}
           />
           
           <View style={styles.switchContainer}>

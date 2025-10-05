@@ -65,7 +65,7 @@ export default function AddMaintenanceLogScreen() {
 
   const handleSave = async () => {
     // Validate form fields
-    if (!date || !type || !description || !mileage || !cost) {
+    if (!date || !type || !description || !mileage || !cost || !location) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
@@ -99,7 +99,7 @@ export default function AddMaintenanceLogScreen() {
     setIsLoading(true);
     try {
       // Convert user input to metric units for storage
-      const mileageInKm = convertDistance(mileageNum, distanceUnit, 'km');
+      const mileageInKm = Math.round(convertDistance(mileageNum, distanceUnit, 'km'));
       
       const maintenanceData: Partial<MaintenanceLog> = {
         vehicle_id: vehicle.vehicle_id,

@@ -148,7 +148,7 @@ setLiters(displayVolume.toFixed(2));
 
   const handleSave = async () => {
     // Validate form fields
-    if (!date || !cost || !mileage) {
+    if (!date || !cost || !mileage || !location) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
@@ -192,7 +192,7 @@ setLiters(displayVolume.toFixed(2));
     setIsLoading(true);
     try {
       // Convert user input to metric units for storage
-      const mileageInKm = convertDistance(mileageNum, distanceUnit, 'km');
+      const mileageInKm = Math.round(convertDistance(mileageNum, distanceUnit, 'km'));
       
       const updatedData: Partial<FuelLog> = {
         date,
@@ -298,6 +298,7 @@ setLiters(displayVolume.toFixed(2));
             value={location}
             onChangeLocation={(newLocation) => setLocation(newLocation)}
             required
+            showGasStations={true}
           />
           
           <View style={styles.switchContainer}>
