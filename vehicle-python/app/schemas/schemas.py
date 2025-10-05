@@ -82,6 +82,8 @@ class FuelBase(BaseModel):
     kwh: Optional[Decimal] = Field(None, decimal_places=2)  # For electric vehicles
     cost: Optional[Decimal] = Field(None, decimal_places=2)
     location: Optional[str] = None
+    latitude: Optional[Decimal] = Field(None, decimal_places=8)  # Precise location
+    longitude: Optional[Decimal] = Field(None, decimal_places=8)  # Precise location
     full_tank: bool = False
     notes: Optional[str] = None
 
@@ -94,6 +96,8 @@ class FuelUpdate(FuelBase):
 class Fuel(FuelBase):
     fuel_id: int
     vehicle_id: int
+    normalized_location: Optional[str] = None  # Simplified name
+    station_cluster_id: Optional[str] = None  # Cluster ID
 
     class Config:
         from_attributes = True

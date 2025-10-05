@@ -35,6 +35,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="fuel-prices"
+        options={{
+          title: 'Fuel Prices',
+          tabBarIcon: ({ color }) => <Ionicons name="pricetag" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="reminders"
         options={{
           title: 'Reminders',

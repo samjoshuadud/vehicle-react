@@ -45,9 +45,11 @@ export interface FuelLog {
   liters: number;
   kwh: number;  // For electric vehicles
   cost: number;
-  odometer_reading: number;
-  fuel_type?: string;
   location?: string;
+  latitude?: number;  // For fuel price tracking
+  longitude?: number;  // For fuel price tracking
+  normalized_location?: string;  // Simplified location name
+  station_cluster_id?: string;  // For grouping nearby stations
   full_tank?: boolean;
   notes?: string;
 }

@@ -13,3 +13,5 @@ alembic
 aiosmtplib
 email-validator
 jinja2
+fuzzywuzzy
+python-Levenshtein

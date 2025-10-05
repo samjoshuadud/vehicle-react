@@ -65,7 +65,11 @@ class Fuel(Base):
     liters = Column(DECIMAL(10,2))
     kwh = Column(DECIMAL(10,2))  # For electric vehicles
     cost = Column(DECIMAL(10,2))
-    location = Column(String(100))
+    location = Column(String(500))  # Increased from 100 to 500 for full addresses
+    latitude = Column(DECIMAL(10,8))  # For precise location tracking
+    longitude = Column(DECIMAL(11,8))  # For precise location tracking
+    normalized_location = Column(String(255))  # Simplified name like "Petron, EDSA"
+    station_cluster_id = Column(String(100))  # Groups nearby logs together
     full_tank = Column(Boolean, default=False)
     notes = Column(Text)
 
@@ -98,5 +102,16 @@ class PasswordResetToken(Base):
     used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationship
-    user = relationship("User")
+class GasStationCluster(Base):
+    __tablename__ = "Gas_Station_Clusters"
+
+    cluster_id = Column(String(100), primary_key=True)
+    normalized_name = Column(String(255), nullable=False)
+    latitude = Column(DECIMAL(10,8), nullable=False)
+    longitude = Column(DECIMAL(11,8), nullable=False)
+    brand = Column(String(100))
+    street = Column(String(255))
+    city = Column(String(100))
+    report_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

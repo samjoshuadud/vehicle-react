@@ -29,6 +29,7 @@ export default function AddFuelLogScreen() {
   const [liters, setLiters] = useState('');
   const [cost, setCost] = useState('');
   const [location, setLocation] = useState('');
+  const [locationCoords, setLocationCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isFull, setIsFull] = useState(true);
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -111,6 +112,8 @@ export default function AddFuelLogScreen() {
         kwh: (isElectric && liters) ? parseFloat(liters) : undefined,
         cost: costNum,
         location: location || undefined,
+        latitude: locationCoords?.latitude,
+        longitude: locationCoords?.longitude,
         full_tank: isFull,
         notes: notes || undefined,
       };
@@ -200,7 +203,10 @@ export default function AddFuelLogScreen() {
           <LocationPicker
             label="Location"
             value={location}
-            onChangeLocation={(newLocation) => setLocation(newLocation)}
+            onChangeLocation={(newLocation, coordinates) => {
+              setLocation(newLocation);
+              setLocationCoords(coordinates || null);
+            }}
             required
             showGasStations={true}
           />

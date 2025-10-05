@@ -70,7 +70,7 @@ export default function LocationPicker({
     })();
   }, []);
 
-  // OpenStreetMap HTML with Leaflet
+  // OpenStreetMap HTML with Leaflet (100% FREE - No API Key!)
   const getMapHTML = () => {
     const lat = selectedCoords?.latitude || mapCenter.latitude;
     const lng = selectedCoords?.longitude || mapCenter.longitude;
@@ -128,13 +128,13 @@ export default function LocationPicker({
             let map, marker, gasStationMarkers = [];
             const showGasStations = ${showGasStations};
             
-            // Initialize map with better tile layer (CartoDB Voyager - cleaner look)
+            // Initialize OpenStreetMap with Leaflet
             map = L.map('map', {
               zoomControl: true,
               attributionControl: false
             }).setView([${lat}, ${lng}], 15);
             
-            // Use CartoDB Voyager tiles for a cleaner, Google Maps-like appearance
+            // Use CartoDB Voyager tiles for a clean appearance
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
               attribution: '© OpenStreetMap, © CartoDB',
               maxZoom: 19,
@@ -185,34 +185,72 @@ export default function LocationPicker({
               marker.setLatLng(latlng);
               map.panTo(latlng);
               
-              // Reverse geocode using Nominatim
-              fetch(\`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${latlng.lat}&lon=\${latlng.lng}\`)
+              // Send coordinates immediately
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'location-selected',
+                latitude: latlng.lat,
+                longitude: latlng.lng,
+                address: 'Loading location...'
+              }));
+              
+              // Reverse geocode using Nominatim (FREE!)
+              fetch(\`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${latlng.lat}&lon=\${latlng.lng}&zoom=16\`)
                 .then(response => response.json())
                 .then(data => {
+                  let address = '';
+                  
+                  if (data.address) {
+                    const name = data.address.amenity || 
+                                data.address.building || 
+                                data.address.shop || 
+                                data.name || '';
+                    
+                    const road = data.address.road || 
+                                data.address.street || 
+                                data.address.suburb || '';
+                    
+                    if (name && road) {
+                      address = \`\${name}, \${road}\`;
+                    } else if (road) {
+                      const city = data.address.city || 
+                                  data.address.municipality || 
+                                  data.address.town || '';
+                      address = city ? \`\${road}, \${city}\` : road;
+                    } else if (name) {
+                      address = name;
+                    } else {
+                      const parts = (data.display_name || '').split(',');
+                      address = parts.slice(0, 2).join(',').trim();
+                    }
+                  }
+                  
+                  if (!address) {
+                    address = \`Location (\${latlng.lat.toFixed(4)}, \${latlng.lng.toFixed(4)})\`;
+                  }
+                  
                   window.ReactNativeWebView.postMessage(JSON.stringify({
                     type: 'location-selected',
                     latitude: latlng.lat,
                     longitude: latlng.lng,
-                    address: data.display_name || \`\${latlng.lat.toFixed(6)}, \${latlng.lng.toFixed(6)}\`
+                    address: address
                   }));
                 })
                 .catch(error => {
+                  console.error('Reverse geocoding failed:', error);
                   window.ReactNativeWebView.postMessage(JSON.stringify({
                     type: 'location-selected',
                     latitude: latlng.lat,
                     longitude: latlng.lng,
-                    address: \`\${latlng.lat.toFixed(6)}, \${latlng.lng.toFixed(6)}\`
+                    address: \`Location (\${latlng.lat.toFixed(4)}, \${latlng.lng.toFixed(4)})\`
                   }));
                 });
             }
             
-            // Load nearby gas stations
+            // Load nearby gas stations using Overpass API (FREE!)
             function loadGasStations(lat, lng) {
-              // Clear existing gas station markers
               gasStationMarkers.forEach(m => map.removeLayer(m));
               gasStationMarkers = [];
               
-              // Query Overpass API for gas stations
               const overpassQuery = \`
                 [out:json][timeout:25];
                 (
@@ -243,13 +281,26 @@ export default function LocationPicker({
                       icon: gasIcon 
                     });
                     
-                    const name = element.tags?.name || 'Gas Station';
-                    const brand = element.tags?.brand || '';
-                    gasMarker.bindPopup(\`<b>\${name}</b>\${brand ? '<br>' + brand : ''}\`);
+                    const name = element.tags?.name || element.tags?.brand || 'Gas Station';
+                    const street = element.tags?.['addr:street'] || '';
+                    
+                    let displayName = name;
+                    if (street && !name.includes(street)) {
+                      displayName = \`\${name}, \${street}\`;
+                    }
+                    
+                    gasMarker.bindPopup(\`<b>\${name}</b>\`);
                     
                     gasMarker.on('click', function() {
                       marker.setLatLng([elementLat, elementLon]);
-                      placeMarker({ lat: elementLat, lng: elementLon });
+                      map.panTo([elementLat, elementLon]);
+                      
+                      window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'location-selected',
+                        latitude: elementLat,
+                        longitude: elementLon,
+                        address: displayName
+                      }));
                     });
                     
                     gasMarker.addTo(map);
@@ -274,6 +325,38 @@ export default function LocationPicker({
     `;
   };
 
+  // Helper function to simplify location names
+  const simplifyLocationName = (fullAddress: string): string => {
+    // Don't process loading state or coordinates
+    if (fullAddress.startsWith('Loading') || fullAddress.startsWith('Location (')) {
+      return fullAddress;
+    }
+    
+    // Extract meaningful parts from long address
+    // Example: "Petron, Manuel L. Quezon Avenue, Lower Bicutan, Taguig..." 
+    //       -> "Petron, Manuel L. Quezon Avenue"
+    
+    const parts = fullAddress.split(',').map(p => p.trim());
+    
+    // Known gas station brands
+    const brands = ['Shell', 'Petron', 'Caltex', 'Phoenix', 'Seaoil', 'PTT', 'Total', 'Unioil', 'Flying V', 'Cleanfuel'];
+    
+    // Find if first part contains a brand
+    const firstPart = parts[0] || '';
+    const hasBrand = brands.some(brand => firstPart.toLowerCase().includes(brand.toLowerCase()));
+    
+    if (hasBrand && parts.length >= 2) {
+      // Gas station format: "Brand, Street"
+      return `${parts[0]}, ${parts[1]}`;
+    } else if (parts.length >= 2) {
+      // Generic location: "Street, City"
+      return `${parts[0]}, ${parts[1]}`;
+    } else {
+      // Fallback to first part only
+      return parts[0] || fullAddress;
+    }
+  };
+
   const handleWebViewMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -282,7 +365,11 @@ export default function LocationPicker({
           latitude: data.latitude,
           longitude: data.longitude,
         });
-        onChangeLocation(data.address, {
+        
+        // Simplify the address before passing it back
+        const simplifiedAddress = simplifyLocationName(data.address);
+        
+        onChangeLocation(simplifiedAddress, {
           latitude: data.latitude,
           longitude: data.longitude,
         });
@@ -300,56 +387,68 @@ export default function LocationPicker({
 
     setIsSearching(true);
     try {
-      // Build search URL with location biasing
       const searchLat = userLocation?.latitude || mapCenter.latitude;
       const searchLng = userLocation?.longitude || mapCenter.longitude;
       
-      // If showing gas stations, prioritize fuel stations in search
-      const searchQuery = showGasStations && !query.toLowerCase().includes('gas') && !query.toLowerCase().includes('fuel') && !query.toLowerCase().includes('station')
-        ? `${query} gas station`
-        : query;
+      // Use the query as-is - no automatic modifications
+      let searchQuery = query;
       
-      // Use Nominatim API with viewbox to bias results to current area
-      const viewbox = `${searchLng - 0.5},${searchLat + 0.5},${searchLng + 0.5},${searchLat - 0.5}`;
+      // Add Philippines to search query to restrict results to the country
+      if (!searchQuery.toLowerCase().includes('philippines') && 
+          !searchQuery.toLowerCase().includes('manila') &&
+          !searchQuery.toLowerCase().includes('quezon') &&
+          !searchQuery.toLowerCase().includes('cebu') &&
+          !searchQuery.toLowerCase().includes('davao')) {
+        searchQuery += ', Philippines';
+      }
+      
+      // Use Nominatim API (OpenStreetMap - 100% FREE!)
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?` +
         `format=json&` +
         `q=${encodeURIComponent(searchQuery)}&` +
-        `limit=10&` +
-        `viewbox=${viewbox}&` +
-        `bounded=1&` +
+        `countrycodes=ph&` + // Restrict to Philippines
+        `limit=15&` +
         `addressdetails=1`
       );
-      let data = await response.json();
       
-      // If bounded search returns no results, try unbounded
-      if (data.length === 0) {
-        const unboundedResponse = await fetch(
-          `https://nominatim.openstreetmap.org/search?` +
-          `format=json&` +
-          `q=${encodeURIComponent(searchQuery)}&` +
-          `limit=10&` +
-          `viewbox=${viewbox}&` +
-          `addressdetails=1`
-        );
-        data = await unboundedResponse.json();
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.status}`);
       }
       
-      // Sort results by distance from current location
-      const resultsWithDistance = data.map((result: any) => ({
-        ...result,
-        distance: calculateDistance(
-          searchLat,
-          searchLng,
-          parseFloat(result.lat),
-          parseFloat(result.lon)
-        )
-      }));
+      const data = await response.json();
       
-      resultsWithDistance.sort((a: any, b: any) => a.distance - b.distance);
-      setSearchResults(resultsWithDistance);
-    } catch (error) {
+      if (!data || data.length === 0) {
+        console.log('No results found for:', searchQuery);
+        setSearchResults([]);
+        return;
+      }
+      
+      // Convert Nominatim results to our format
+      const formattedResults = data.slice(0, 15).map((result: any) => {
+        const lat = parseFloat(result.lat);
+        const lng = parseFloat(result.lon);
+        
+        const distance = calculateDistance(searchLat, searchLng, lat, lng);
+        
+        return {
+          display_name: result.display_name,
+          lat: result.lat,
+          lon: result.lon,
+          distance: distance,
+          type: result.type === 'fuel' || result.class === 'amenity' ? 'fuel' : 'place',
+        };
+      });
+      
+      // Filter out results that are too far (more than 500km)
+      const nearbyResults = formattedResults.filter((result: any) => result.distance < 500);
+      
+      // Sort by distance
+      nearbyResults.sort((a: any, b: any) => a.distance - b.distance);
+      setSearchResults(nearbyResults);
+    } catch (error: any) {
       console.error('Error searching location:', error);
+      console.log('❌ Search failed:', error.message);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -371,7 +470,10 @@ export default function LocationPicker({
 
   const handleSearchChange = (text: string) => {
     setSearchQuery(text);
-    searchLocation(text);
+  };
+
+  const handleSearchButtonPress = () => {
+    searchLocation(searchQuery);
   };
 
   const handleSelectSearchResult = (result: SearchResult) => {
@@ -380,7 +482,11 @@ export default function LocationPicker({
     
     setSelectedCoords({ latitude: lat, longitude: lng });
     setMapCenter({ latitude: lat, longitude: lng });
-    onChangeLocation(result.display_name, { latitude: lat, longitude: lng });
+    
+    // Simplify the search result name
+    const simplifiedName = simplifyLocationName(result.display_name);
+    
+    onChangeLocation(simplifiedName, { latitude: lat, longitude: lng });
     
     // Update map view via WebView
     if (webViewRef.current) {
@@ -412,10 +518,13 @@ export default function LocationPicker({
       
       // Reverse geocode
       const [address] = await Location.reverseGeocodeAsync({ latitude, longitude });
-      const addressString = `${address.street || ''} ${address.city || ''} ${address.region || ''}`.trim() || 
+      const addressString = `${address.street || ''} ${address.city || ''}`.trim() || 
                            `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
       
-      onChangeLocation(addressString, { latitude, longitude });
+      // Simplify before saving
+      const simplifiedAddress = simplifyLocationName(addressString);
+      
+      onChangeLocation(simplifiedAddress, { latitude, longitude });
       
       // Update map
       if (webViewRef.current) {
@@ -484,8 +593,10 @@ export default function LocationPicker({
               placeholder="Search for a location..."
               value={searchQuery}
               onChangeText={handleSearchChange}
+              onSubmitEditing={handleSearchButtonPress}
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="search"
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => {
@@ -495,6 +606,17 @@ export default function LocationPicker({
                 <Ionicons name="close-circle" size={20} color="#6B7280" />
               </TouchableOpacity>
             )}
+            <TouchableOpacity 
+              onPress={handleSearchButtonPress} 
+              style={styles.searchButton}
+              disabled={isSearching || searchQuery.trim().length < 3}
+            >
+              {isSearching ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.searchButtonText}>Search</Text>
+              )}
+            </TouchableOpacity>
           </View>
 
           {/* Current Location Button */}
@@ -689,6 +811,21 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#111827',
+  },
+  searchButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginLeft: 8,
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   actionsContainer: {
     paddingHorizontal: 16,
