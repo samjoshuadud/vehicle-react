@@ -21,34 +21,53 @@ async def create_fuel_log(
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # Verify vehicle belongs to user
-    vehicle = db.query(models.Vehicle).filter(
-        models.Vehicle.vehicle_id == fuel.vehicle_id,
-        models.Vehicle.user_id == current_user.user_id
-    ).first()
-    
-    if not vehicle:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Vehicle not found"
-        )
+    try:
+        logger.info(f"⛽ Creating fuel log for user {current_user.user_id}")
+        logger.info(f"📝 Fuel data received: {fuel.model_dump()}")
+        
+        # Verify vehicle belongs to user
+        vehicle = db.query(models.Vehicle).filter(
+            models.Vehicle.vehicle_id == fuel.vehicle_id,
+            models.Vehicle.user_id == current_user.user_id
+        ).first()
+        
+        if not vehicle:
+            logger.error(f"❌ Vehicle {fuel.vehicle_id} not found for user {current_user.user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Vehicle not found"
+            )
 
-    db_fuel = models.Fuel(**fuel.model_dump())
-    db.add(db_fuel)
-    
-    # 🚗 UPDATED: Use centralized mileage service
-    if fuel.odometer_reading:
-        success, message = MileageService.update_vehicle_mileage(
-            db, fuel.vehicle_id, fuel.odometer_reading
+        logger.info(f"Creating Fuel object with data: {fuel.model_dump()}")
+        db_fuel = models.Fuel(**fuel.model_dump())
+        logger.info(f"Adding to database...")
+        db.add(db_fuel)
+        
+        # 🚗 UPDATED: Use centralized mileage service
+        if fuel.odometer_reading:
+            logger.info(f"Updating vehicle mileage to {fuel.odometer_reading}")
+            success, message = MileageService.update_vehicle_mileage(
+                db, fuel.vehicle_id, fuel.odometer_reading
+            )
+            if success:
+                logger.info(f"Fuel creation: {message}")
+            else:
+                logger.warning(f"Mileage update failed during fuel creation: {message}")
+        
+        logger.info(f"Committing to database...")
+        db.commit()
+        logger.info(f"Refreshing object...")
+        db.refresh(db_fuel)
+        logger.info(f"✅ Fuel log created successfully with ID {db_fuel.fuel_id}")
+        return db_fuel
+    except Exception as e:
+        logger.error(f"❌ ERROR creating fuel log: {type(e).__name__}: {str(e)}")
+        logger.exception("Full traceback:")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create fuel log: {str(e)}"
         )
-        if success:
-            logger.info(f"Fuel creation: {message}")
-        else:
-            logger.warning(f"Mileage update failed during fuel creation: {message}")
-    
-    db.commit()
-    db.refresh(db_fuel)
-    return db_fuel
 
 @router.get("/vehicle/{vehicle_id}", response_model=List[schemas.Fuel])
 async def read_vehicle_fuel_logs(

@@ -3,7 +3,7 @@ Centralized mileage management service for vehicle tracking.
 Handles all mileage updates and validation across fuel and maintenance logs.
 """
 from sqlalchemy.orm import Session
-from app import models
+from app.models import models
 from typing import Optional, Tuple
 import logging
 
@@ -70,10 +70,10 @@ class MileageService:
         """
         try:
             # Get highest fuel log mileage
-            fuel_max = db.query(models.FuelLog.odometer_reading)\
-                .filter(models.FuelLog.vehicle_id == vehicle_id)\
-                .filter(models.FuelLog.odometer_reading.isnot(None))\
-                .order_by(models.FuelLog.odometer_reading.desc())\
+            fuel_max = db.query(models.Fuel.odometer_reading)\
+                .filter(models.Fuel.vehicle_id == vehicle_id)\
+                .filter(models.Fuel.odometer_reading.isnot(None))\
+                .order_by(models.Fuel.odometer_reading.desc())\
                 .first()
                 
             # Get highest maintenance log mileage

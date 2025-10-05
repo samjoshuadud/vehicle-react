@@ -21,39 +21,54 @@ async def create_maintenance(
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    logger.info(f"🔧 Creating maintenance log for user {current_user.user_id}")
-    logger.info(f"📝 Maintenance data received: {maintenance.model_dump()}")
-    
-    # Verify vehicle belongs to user
-    vehicle = db.query(models.Vehicle).filter(
-        models.Vehicle.vehicle_id == maintenance.vehicle_id,
-        models.Vehicle.user_id == current_user.user_id
-    ).first()
-    
-    if not vehicle:
-        logger.error(f"❌ Vehicle {maintenance.vehicle_id} not found for user {current_user.user_id}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Vehicle not found"
-        )
+    try:
+        logger.info(f"🔧 Creating maintenance log for user {current_user.user_id}")
+        logger.info(f"📝 Maintenance data received: {maintenance.model_dump()}")
+        
+        # Verify vehicle belongs to user
+        vehicle = db.query(models.Vehicle).filter(
+            models.Vehicle.vehicle_id == maintenance.vehicle_id,
+            models.Vehicle.user_id == current_user.user_id
+        ).first()
+        
+        if not vehicle:
+            logger.error(f"❌ Vehicle {maintenance.vehicle_id} not found for user {current_user.user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Vehicle not found"
+            )
 
-    # Create maintenance record
-    db_maintenance = models.Maintenance(**maintenance.model_dump())
-    db.add(db_maintenance)
-    
-    # 🚗 NEW: Update vehicle mileage using centralized service
-    if maintenance.mileage:
-        success, message = MileageService.update_vehicle_mileage(
-            db, maintenance.vehicle_id, maintenance.mileage
+        # Create maintenance record
+        logger.info(f"Creating Maintenance object with data: {maintenance.model_dump()}")
+        db_maintenance = models.Maintenance(**maintenance.model_dump())
+        logger.info(f"Adding to database...")
+        db.add(db_maintenance)
+        
+        # 🚗 NEW: Update vehicle mileage using centralized service
+        if maintenance.mileage:
+            logger.info(f"Updating vehicle mileage to {maintenance.mileage}")
+            success, message = MileageService.update_vehicle_mileage(
+                db, maintenance.vehicle_id, maintenance.mileage
+            )
+            if success:
+                logger.info(f"Maintenance creation: {message}")
+            else:
+                logger.warning(f"Mileage update failed during maintenance creation: {message}")
+        
+        logger.info(f"Committing to database...")
+        db.commit()
+        logger.info(f"Refreshing object...")
+        db.refresh(db_maintenance)
+        logger.info(f"✅ Maintenance log created successfully with ID {db_maintenance.maintenance_id}")
+        return db_maintenance
+    except Exception as e:
+        logger.error(f"❌ ERROR creating maintenance log: {type(e).__name__}: {str(e)}")
+        logger.exception("Full traceback:")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create maintenance log: {str(e)}"
         )
-        if success:
-            logger.info(f"Maintenance creation: {message}")
-        else:
-            logger.warning(f"Mileage update failed during maintenance creation: {message}")
-    
-    db.commit()
-    db.refresh(db_maintenance)
-    return db_maintenance
 
 @router.get("/vehicle/{vehicle_id}", response_model=List[schemas.Maintenance])
 async def read_vehicle_maintenance(
