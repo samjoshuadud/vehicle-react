@@ -3,18 +3,15 @@ import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional
-import os
-from dotenv import load_dotenv
 from jinja2 import Template
-
-load_dotenv()
+from ..config import GMAIL_EMAIL, GMAIL_APP_PASSWORD
 
 class EmailService:
     def __init__(self):
         self.smtp_server = "smtp.gmail.com"
         self.smtp_port = 587
-        self.sender_email = os.getenv("GMAIL_EMAIL")
-        self.sender_password = os.getenv("GMAIL_APP_PASSWORD")  # Gmail App Password
+        self.sender_email = GMAIL_EMAIL
+        self.sender_password = GMAIL_APP_PASSWORD  # Gmail App Password
         
         if not self.sender_email or not self.sender_password:
             raise ValueError("Gmail credentials not found in environment variables")

@@ -6,16 +6,10 @@ from ..models import models
 from ..schemas import schemas
 from ..utils.auth import verify_password, create_access_token, get_password_hash, get_current_active_user
 from ..utils.email import email_service
+from ..config import ACCESS_TOKEN_EXPIRE_MINUTES
 from datetime import datetime, timedelta
-import os
-import secrets
-from dotenv import load_dotenv
 import secrets
 import hashlib
-from datetime import datetime, timedelta
-
-load_dotenv()
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 router = APIRouter(
     prefix="/auth",

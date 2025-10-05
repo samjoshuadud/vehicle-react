@@ -7,6 +7,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, Touchable
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import DatePicker from '@/components/ui/DatePicker';
 import FormHeader from '@/components/FormHeader';
 import { useTheme } from '@/context/ThemeContext';
 import { useVehicles } from '@/context/VehiclesContext';
@@ -148,12 +149,11 @@ export default function AddReminderScreen() {
             leftIcon={<Ionicons name="document-text-outline" size={20} color="#6B7280" />}
           />
           
-          <Input
-            label="Due Date *"
-            placeholder="YYYY-MM-DD"
+          <DatePicker
+            label="Due Date"
             value={date}
-            onChangeText={setDate}
-            leftIcon={<Ionicons name="calendar-outline" size={20} color="#6B7280" />}
+            onChangeDate={setDate}
+            required
           />
           
           <View style={styles.sectionContainer}>

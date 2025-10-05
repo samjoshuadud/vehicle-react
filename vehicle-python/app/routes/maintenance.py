@@ -21,6 +21,9 @@ async def create_maintenance(
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
+    logger.info(f"🔧 Creating maintenance log for user {current_user.user_id}")
+    logger.info(f"📝 Maintenance data received: {maintenance.model_dump()}")
+    
     # Verify vehicle belongs to user
     vehicle = db.query(models.Vehicle).filter(
         models.Vehicle.vehicle_id == maintenance.vehicle_id,
@@ -28,6 +31,7 @@ async def create_maintenance(
     ).first()
     
     if not vehicle:
+        logger.error(f"❌ Vehicle {maintenance.vehicle_id} not found for user {current_user.user_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vehicle not found"

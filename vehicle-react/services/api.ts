@@ -1,7 +1,7 @@
 
 // Change accordingly (if changed machine or changed network)
 // const API_BASE_URL = 'http://192.168.87.15:8000'; // Backend server IP
-const API_BASE_URL = 'http://172.20.10.3:8000'
+const API_BASE_URL = 'http://192.168.100.114:8000'
 
 export interface User {
   user_id: number;
@@ -635,6 +635,8 @@ class ApiService {
 
   async createMaintenanceLog(token: string, maintenanceData: Partial<MaintenanceLog>): Promise<MaintenanceLog> {
     try {
+      console.log('🔧 Creating maintenance log with data:', JSON.stringify(maintenanceData, null, 2));
+      
       const response = await fetch(`${this.baseUrl}/maintenance/`, {
         method: 'POST',
         headers: {
@@ -644,15 +646,19 @@ class ApiService {
         body: JSON.stringify(maintenanceData),
       });
 
+      console.log('📡 Maintenance log creation response status:', response.status);
 
       if (!response.ok) {
         const errorMessage = await this.parseErrorResponse(response, 'Failed to create maintenance log');
+        console.error('❌ Maintenance log creation failed:', errorMessage);
         throw new Error(errorMessage);
       }
 
       const result = await response.json();
+      console.log('✅ Maintenance log created successfully:', result);
       return result;
     } catch (error) {
+      console.error('💥 Error in createMaintenanceLog:', error);
       if (error instanceof Error) {
         throw error;
       }

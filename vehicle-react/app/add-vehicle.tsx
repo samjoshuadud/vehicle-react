@@ -8,6 +8,7 @@ import * as FileSystem from 'expo-file-system';
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import DatePicker from '@/components/ui/DatePicker';
 import FormHeader from '@/components/FormHeader';
 import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
@@ -265,12 +266,11 @@ export default function AddVehicleScreen() {
               leftIcon={<Ionicons name="water-outline" size={20} color="#6B7280" />}
             />
             
-            <Input
+            <DatePicker
               label="Purchase Date"
-              placeholder="YYYY-MM-DD"
               value={purchaseDate}
-              onChangeText={setPurchaseDate}
-              leftIcon={<Ionicons name="calendar-outline" size={20} color="#6B7280" />}
+              onChangeDate={setPurchaseDate}
+              maximumDate={new Date()}
             />
             
             <Text style={styles.imageNote}>

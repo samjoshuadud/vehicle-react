@@ -6,6 +6,7 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, To
 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import DatePicker from '@/components/ui/DatePicker';
 import { SafeArea } from '@/components/ui/SafeArea';
 import { useTheme } from '@/context/ThemeContext';
 import { useVehicles } from '@/context/VehiclesContext';
@@ -182,11 +183,11 @@ export default function EditReminderScreen() {
             numberOfLines={3}
           />
 
-          <Input
-            label="Due Date *"
+          <DatePicker
+            label="Due Date"
             value={date}
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
+            onChangeDate={setDate}
+            required
           />
 
           <View style={styles.inputGroup}>
