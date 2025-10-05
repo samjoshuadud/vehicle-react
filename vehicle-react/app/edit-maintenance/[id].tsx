@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import DatePicker from '@/components/ui/DatePicker';
 import Select from '@/components/ui/Select';
+import LocationPicker from '@/components/ui/LocationPicker';
 import FormHeader from '@/components/FormHeader';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -259,12 +260,11 @@ export default function EditMaintenanceLogScreen() {
             leftIcon={<Ionicons name="cash-outline" size={20} color="#6B7280" />}
           />
           
-          <Input
-            label="Location *"
-            placeholder="Where the service was performed"
+          <LocationPicker
+            label="Location"
             value={location}
-            onChangeText={setLocation}
-            leftIcon={<Ionicons name="location-outline" size={20} color="#6B7280" />}
+            onChangeLocation={(newLocation) => setLocation(newLocation)}
+            required
           />
           
           <Input

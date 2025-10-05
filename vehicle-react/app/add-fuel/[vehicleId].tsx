@@ -8,6 +8,7 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import DatePicker from '@/components/ui/DatePicker';
+import LocationPicker from '@/components/ui/LocationPicker';
 import FormHeader from '@/components/FormHeader';
 import { useTheme } from '@/context/ThemeContext';
 import { useVehicles } from '@/context/VehiclesContext';
@@ -220,12 +221,11 @@ export default function AddFuelLogScreen() {
             📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
           </Text>
           
-          <Input
-            label="Location *"
-            placeholder="Where you filled up"
+          <LocationPicker
+            label="Location"
             value={location}
-            onChangeText={setLocation}
-            leftIcon={<Ionicons name="location-outline" size={20} color="#6B7280" />}
+            onChangeLocation={(newLocation) => setLocation(newLocation)}
+            required
           />
           
           <View style={styles.switchContainer}>
