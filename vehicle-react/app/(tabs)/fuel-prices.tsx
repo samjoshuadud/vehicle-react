@@ -5,7 +5,7 @@
  * Shows nearby gas stations with current fuel prices on an interactive map.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useFocusEffect } from 'expo-router';
+import { API_BASE_URL } from '@/services/api';
 
 interface FuelStation {
   cluster_id: string;
@@ -54,6 +56,15 @@ export default function FuelPricesScreen() {
   useEffect(() => {
     requestLocationAndFetch();
   }, [searchRadius, fuelTypeFilter]);
+
+  // Refetch prices whenever the tab becomes focused (real-time updates)
+  useFocusEffect(
+    useCallback(() => {
+      if (userLocation) {
+        fetchFuelPrices(userLocation.latitude, userLocation.longitude);
+      }
+    }, [userLocation, searchRadius, fuelTypeFilter, token])
+  );
 
   const requestLocationAndFetch = async () => {
     try {
@@ -103,7 +114,7 @@ export default function FuelPricesScreen() {
       }
 
       const response = await fetch(
-        `http://192.168.100.114:8000/fuel-prices/nearby?${params}`,
+        `${API_BASE_URL}/fuel-prices/nearby?${params}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,

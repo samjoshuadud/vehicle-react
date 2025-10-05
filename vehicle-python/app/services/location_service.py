@@ -40,6 +40,35 @@ class LocationService:
         if not raw_address:
             return {"brand": "Gas Station", "street": "", "normalized": "Gas Station"}
         
+        # Handle "Unnamed Location (coordinates)" case
+        if raw_address.startswith("Unnamed Location ("):
+            # Extract coordinates if present
+            coord_match = re.search(r'\(([-\d.]+),\s*([-\d.]+)\)', raw_address)
+            if coord_match:
+                lat, lng = coord_match.groups()
+                normalized = f"Station at {lat[:7]}, {lng[:7]}"
+            else:
+                normalized = "Unnamed Gas Station"
+            return {
+                "brand": "Gas Station",
+                "street": "",
+                "normalized": normalized
+            }
+        
+        # Handle old "Location (coordinates)" format
+        if raw_address.startswith("Location ("):
+            coord_match = re.search(r'\(([-\d.]+),\s*([-\d.]+)\)', raw_address)
+            if coord_match:
+                lat, lng = coord_match.groups()
+                normalized = f"Station at {lat[:7]}, {lng[:7]}"
+            else:
+                normalized = "Unnamed Gas Station"
+            return {
+                "brand": "Gas Station",
+                "street": "",
+                "normalized": normalized
+            }
+        
         # Find brand in address
         brand = "Gas Station"
         for gas_brand in LocationService.GAS_BRANDS:

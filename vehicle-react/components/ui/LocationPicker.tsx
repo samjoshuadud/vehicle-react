@@ -14,6 +14,7 @@ import {
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import { API_BASE_URL } from '@/services/api';
 
 interface LocationPickerProps {
   label: string;
@@ -194,7 +195,7 @@ export default function LocationPicker({
               }));
               
               // Reverse geocode using Nominatim (FREE!)
-              fetch(\`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${latlng.lat}&lon=\${latlng.lng}&zoom=16\`)
+              fetch(\`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${latlng.lat}&lon=\${latlng.lng}&zoom=18&addressdetails=1\`)
                 .then(response => response.json())
                 .then(data => {
                   let address = '';
@@ -209,23 +210,59 @@ export default function LocationPicker({
                                 data.address.street || 
                                 data.address.suburb || '';
                     
+                    const city = data.address.city || 
+                                data.address.municipality || 
+                                data.address.town || 
+                                data.address.village || '';
+                    
+                    const neighborhood = data.address.neighbourhood || 
+                                        data.address.hamlet || '';
+                    
+                    // Priority 1: Specific place + road (best for gas stations)
                     if (name && road) {
                       address = \`\${name}, \${road}\`;
-                    } else if (road) {
-                      const city = data.address.city || 
-                                  data.address.municipality || 
-                                  data.address.town || '';
-                      address = city ? \`\${road}, \${city}\` : road;
-                    } else if (name) {
+                    } 
+                    // Priority 2: Road + city/neighborhood
+                    else if (road && (city || neighborhood)) {
+                      address = city ? \`\${road}, \${city}\` : \`\${road}, \${neighborhood}\`;
+                    } 
+                    // Priority 3: Just road
+                    else if (road) {
+                      address = road;
+                    } 
+                    // Priority 4: Specific place name only
+                    else if (name) {
                       address = name;
-                    } else {
-                      const parts = (data.display_name || '').split(',');
-                      address = parts.slice(0, 2).join(',').trim();
+                    } 
+                    // Priority 5: City/neighborhood only
+                    else if (city || neighborhood) {
+                      address = city || neighborhood;
+                    }
+                    // Priority 6: Parse display_name
+                    else {
+                      const parts = (data.display_name || '').split(',').map(p => p.trim());
+                      // Filter out country, postal code, region
+                      const filtered = parts.filter(p => 
+                        !p.match(/^\d{4,}$/) && // postal codes
+                        !p.toLowerCase().includes('philippines') &&
+                        !p.toLowerCase().includes('luzon') &&
+                        !p.toLowerCase().includes('visayas') &&
+                        !p.toLowerCase().includes('mindanao') &&
+                        !p.toLowerCase().includes('metro manila')
+                      );
+                      address = filtered.slice(0, 2).join(', ');
                     }
                   }
                   
-                  if (!address) {
-                    address = \`Location (\${latlng.lat.toFixed(4)}, \${latlng.lng.toFixed(4)})\`;
+                  // Fallback: Use nearest road/place from display_name if still empty
+                  if (!address && data.display_name) {
+                    const parts = data.display_name.split(',').map(p => p.trim());
+                    address = parts.slice(0, 2).join(', ');
+                  }
+                  
+                  // Last resort: "Unnamed Location" instead of coordinates
+                  if (!address || address.length < 3) {
+                    address = \`Unnamed Location (\${latlng.lat.toFixed(5)}, \${latlng.lng.toFixed(5)})\`;
                   }
                   
                   window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -237,11 +274,12 @@ export default function LocationPicker({
                 })
                 .catch(error => {
                   console.error('Reverse geocoding failed:', error);
+                  // Fallback without reverse geocoding
                   window.ReactNativeWebView.postMessage(JSON.stringify({
                     type: 'location-selected',
                     latitude: latlng.lat,
                     longitude: latlng.lng,
-                    address: \`Location (\${latlng.lat.toFixed(4)}, \${latlng.lng.toFixed(4)})\`
+                    address: \`Unnamed Location (\${latlng.lat.toFixed(5)}, \${latlng.lng.toFixed(5)})\`
                   }));
                 });
             }
@@ -327,9 +365,19 @@ export default function LocationPicker({
 
   // Helper function to simplify location names
   const simplifyLocationName = (fullAddress: string): string => {
-    // Don't process loading state or coordinates
-    if (fullAddress.startsWith('Loading') || fullAddress.startsWith('Location (')) {
+    // Don't process loading state
+    if (fullAddress.startsWith('Loading')) {
       return fullAddress;
+    }
+    
+    // Handle "Unnamed Location (coords)" - keep as is for backend to use coordinates
+    if (fullAddress.startsWith('Unnamed Location (')) {
+      return fullAddress;
+    }
+    
+    // Handle old format "Location (coords)" - convert to unnamed
+    if (fullAddress.startsWith('Location (')) {
+      return fullAddress.replace('Location (', 'Unnamed Location (');
     }
     
     // Extract meaningful parts from long address
@@ -390,26 +438,11 @@ export default function LocationPicker({
       const searchLat = userLocation?.latitude || mapCenter.latitude;
       const searchLng = userLocation?.longitude || mapCenter.longitude;
       
-      // Use the query as-is - no automatic modifications
-      let searchQuery = query;
-      
-      // Add Philippines to search query to restrict results to the country
-      if (!searchQuery.toLowerCase().includes('philippines') && 
-          !searchQuery.toLowerCase().includes('manila') &&
-          !searchQuery.toLowerCase().includes('quezon') &&
-          !searchQuery.toLowerCase().includes('cebu') &&
-          !searchQuery.toLowerCase().includes('davao')) {
-        searchQuery += ', Philippines';
-      }
-      
-      // Use Nominatim API (OpenStreetMap - 100% FREE!)
+      // Use backend proxy to avoid React Native network issues
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?` +
-        `format=json&` +
-        `q=${encodeURIComponent(searchQuery)}&` +
-        `countrycodes=ph&` + // Restrict to Philippines
-        `limit=15&` +
-        `addressdetails=1`
+        `${API_BASE_URL}/locations/search?` +
+        `query=${encodeURIComponent(query)}&` +
+        `country_code=ph`
       );
       
       if (!response.ok) {
@@ -418,14 +451,14 @@ export default function LocationPicker({
       
       const data = await response.json();
       
-      if (!data || data.length === 0) {
-        console.log('No results found for:', searchQuery);
+      if (!data.results || data.results.length === 0) {
+        console.log('No results found for:', query);
         setSearchResults([]);
         return;
       }
       
-      // Convert Nominatim results to our format
-      const formattedResults = data.slice(0, 15).map((result: any) => {
+      // Convert results to our format
+      const formattedResults = data.results.slice(0, 15).map((result: any) => {
         const lat = parseFloat(result.lat);
         const lng = parseFloat(result.lon);
         
@@ -449,6 +482,13 @@ export default function LocationPicker({
     } catch (error: any) {
       console.error('Error searching location:', error);
       console.log('❌ Search failed:', error.message);
+      
+      // If search fails, user can still use the map to select location
+      Alert.alert(
+        'Search Unavailable',
+        'Unable to search locations at the moment. Please use the map to select your location by:\n\n• Tapping on the map\n• Dragging the blue marker\n• Using "Current Location" button',
+        [{ text: 'OK' }]
+      );
       setSearchResults([]);
     } finally {
       setIsSearching(false);

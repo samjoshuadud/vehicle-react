@@ -22,7 +22,7 @@ app.add_middleware(
 )
 
 # Include routers
-from .routes import auth, users, vehicles, maintenance, fuel, reminders, prices
+from .routes import auth, users, vehicles, maintenance, fuel, reminders, prices, locations
 
 app.include_router(auth.router)
 app.include_router(users.router)
@@ -31,6 +31,7 @@ app.include_router(maintenance.router)
 app.include_router(fuel.router)
 app.include_router(reminders.router)
 app.include_router(prices.router)
+app.include_router(locations.router)
 
 @app.get("/")
 async def root():
