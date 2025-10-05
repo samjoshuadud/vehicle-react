@@ -20,7 +20,7 @@ import { convertDistance } from '@/utils/units';
 export default function AddMaintenanceLogScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
   const { statusBarStyle, backgroundColor, currencySymbol, distanceUnit } = useTheme();
-  const { vehicles } = useVehicles();
+  const { vehicles, refreshVehicles } = useVehicles();
   const { token } = useAuth();
   
   // Find the vehicle based on the ID
@@ -84,6 +84,41 @@ export default function AddMaintenanceLogScreen() {
       return;
     }
 
+    // Convert to km for comparison with vehicle's stored mileage
+    const mileageInKm = Math.round(convertDistance(mileageNum, distanceUnit, 'km'));
+    const currentMileageKm = vehicle?.current_mileage || 0;
+
+    // Validate mileage is not going backwards
+    if (mileageInKm < currentMileageKm) {
+      Alert.alert(
+        'Mileage Warning',
+        `The entered mileage (${mileageNum.toLocaleString()} ${distanceUnit}) is less than the current vehicle mileage (${Math.round(convertDistance(currentMileageKm, 'km', distanceUnit)).toLocaleString()} ${distanceUnit}).\n\nAre you sure this is correct?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Continue Anyway', onPress: () => proceedWithSave(mileageInKm) }
+        ]
+      );
+      return;
+    }
+
+    // Validate mileage is not suspiciously high (more than 5000 km increase)
+    if (mileageInKm > currentMileageKm + 5000) {
+      Alert.alert(
+        'Unusually High Mileage',
+        `The entered mileage (${mileageNum.toLocaleString()} ${distanceUnit}) is significantly higher than the current vehicle mileage (${Math.round(convertDistance(currentMileageKm, 'km', distanceUnit)).toLocaleString()} ${distanceUnit}).\n\nPlease verify this is correct.`,
+        [
+          { text: 'Let me check', style: 'cancel' },
+          { text: 'It\'s Correct', onPress: () => proceedWithSave(mileageInKm) }
+        ]
+      );
+      return;
+    }
+
+    // Mileage is valid, proceed with save
+    proceedWithSave(mileageInKm);
+  };
+
+  const proceedWithSave = async (mileageInKm: number) => {
     // Validate cost format
     const costNum = parseFloat(cost);
     if (isNaN(costNum) || costNum < 0) {
@@ -98,8 +133,6 @@ export default function AddMaintenanceLogScreen() {
 
     setIsLoading(true);
     try {
-      // Convert user input to metric units for storage
-      const mileageInKm = Math.round(convertDistance(mileageNum, distanceUnit, 'km'));
       
       const maintenanceData: Partial<MaintenanceLog> = {
         vehicle_id: vehicle.vehicle_id,
@@ -113,6 +146,7 @@ export default function AddMaintenanceLogScreen() {
       };
 
       await apiService.createMaintenanceLog(token, maintenanceData);
+      await refreshVehicles(); // Refresh to show updated mileage
       setHasUnsavedChanges(false); // Reset unsaved changes flag
       Alert.alert('Success', 'Maintenance log added successfully', [
         { text: 'OK', onPress: () => router.back() }
@@ -195,6 +229,12 @@ export default function AddMaintenanceLogScreen() {
             keyboardType="number-pad"
             leftIcon={<Ionicons name="speedometer-outline" size={20} color="#6B7280" />}
           />
+          <View style={styles.hintContainer}>
+            <Ionicons name="information-circle-outline" size={16} color="#6B7280" />
+            <Text style={styles.hintText}>
+              Current vehicle mileage: {vehicle?.current_mileage ? Math.round(convertDistance(vehicle.current_mileage, 'km', distanceUnit)).toLocaleString() : '0'} {distanceUnit}
+            </Text>
+          </View>
           <Text style={styles.unitReminder}>
             📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
           </Text>
@@ -314,5 +354,22 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 4,
     marginBottom: 8,
+  },
+  hintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginTop: 6,
+    marginBottom: 4,
+    gap: 6,
+  },
+  hintText: {
+    fontSize: 13,
+    color: '#0369A1',
+    flex: 1,
+    fontWeight: '500',
   },
 });

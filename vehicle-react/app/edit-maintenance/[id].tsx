@@ -12,12 +12,14 @@ import Select from '@/components/ui/Select';
 import LocationPicker from '@/components/ui/LocationPicker';
 import FormHeader from '@/components/FormHeader';
 import { useTheme } from '@/context/ThemeContext';
+import { useVehicles } from '@/context/VehiclesContext';
 import { useAuth } from '@/context/AuthContext';
 import { apiService, MaintenanceLog } from '@/services/api';
 import { convertDistance, formatDistance } from '@/utils/units';
 
 export default function EditMaintenanceLogScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { vehicles, refreshVehicles } = useVehicles();
   const { statusBarStyle, backgroundColor, currencySymbol, distanceUnit } = useTheme();
   const { token } = useAuth();
   
@@ -104,13 +106,53 @@ export default function EditMaintenanceLogScreen() {
       return;
     }
 
-    // Validate mileage format
+        // Validate mileage format
     const mileageNum = parseInt(mileage, 10);
     if (isNaN(mileageNum) || mileageNum < 0) {
       Alert.alert('Invalid Mileage', 'Please enter a valid mileage value');
       return;
     }
 
+    // Convert to km for comparison with vehicle's stored mileage
+    const mileageInKm = Math.round(convertDistance(mileageNum, distanceUnit, 'km'));
+    const vehicle = vehicles.find(v => v.vehicle_id === maintenance?.vehicle_id);
+    const currentMileageKm = vehicle?.current_mileage || 0;
+
+    // Validate mileage is not going backwards significantly
+    if (mileageInKm < currentMileageKm - 1000) {
+      Alert.alert(
+        'Mileage Warning',
+        `The entered mileage (${mileageNum.toLocaleString()} ${distanceUnit}) is significantly less than the current vehicle mileage (${Math.round(convertDistance(currentMileageKm, 'km', distanceUnit)).toLocaleString()} ${distanceUnit}).
+
+Are you sure this is correct?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Continue Anyway', onPress: () => proceedWithUpdate(mileageInKm) }
+        ]
+      );
+      return;
+    }
+
+    // Validate mileage is not suspiciously high
+    if (mileageInKm > currentMileageKm + 5000) {
+      Alert.alert(
+        'Unusually High Mileage',
+        `The entered mileage (${mileageNum.toLocaleString()} ${distanceUnit}) is significantly higher than the current vehicle mileage (${Math.round(convertDistance(currentMileageKm, 'km', distanceUnit)).toLocaleString()} ${distanceUnit}).
+
+Please verify this is correct.`,
+        [
+          { text: 'Let me check', style: 'cancel' },
+          { text: "It's Correct", onPress: () => proceedWithUpdate(mileageInKm) }
+        ]
+      );
+      return;
+    }
+
+    // Mileage is valid, proceed with update
+    proceedWithUpdate(mileageInKm);
+  };
+
+  const proceedWithUpdate = async (mileageInKm: number) => {
     // Validate cost format
     const costNum = parseFloat(cost);
     if (isNaN(costNum) || costNum < 0) {
@@ -125,8 +167,6 @@ export default function EditMaintenanceLogScreen() {
 
     setIsLoading(true);
     try {
-      // Convert user input to metric units for storage
-      const mileageInKm = Math.round(convertDistance(mileageNum, distanceUnit, 'km'));
       
       const updatedData: Partial<MaintenanceLog> = {
         date,
@@ -139,6 +179,7 @@ export default function EditMaintenanceLogScreen() {
       };
 
       await apiService.updateMaintenanceLog(token, maintenance.maintenance_id, updatedData);
+      await refreshVehicles(); // Refresh to show updated mileage
       setHasUnsavedChanges(false); // Reset unsaved changes flag
       Alert.alert('Success', 'Maintenance log updated successfully', [
         { text: 'OK', onPress: () => router.back() }
@@ -247,6 +288,15 @@ export default function EditMaintenanceLogScreen() {
             keyboardType="number-pad"
             leftIcon={<Ionicons name="speedometer-outline" size={20} color="#6B7280" />}
           />
+          <View style={styles.hintContainer}>
+            <Ionicons name="information-circle-outline" size={16} color="#6B7280" />
+            <Text style={styles.hintText}>
+              Current vehicle mileage: {(() => {
+                const vehicle = vehicles.find(v => v.vehicle_id === maintenance?.vehicle_id);
+                return vehicle?.current_mileage ? Math.round(convertDistance(vehicle.current_mileage, 'km', distanceUnit)).toLocaleString() : '0';
+              })()} {distanceUnit}
+            </Text>
+          </View>
           <Text style={styles.unitReminder}>
             📏 Distance unit: {distanceUnit === 'km' ? 'Kilometers' : 'Miles'} (Change in Settings)
           </Text>
@@ -386,5 +436,22 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 4,
     marginBottom: 8,
+  },
+  hintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginTop: 6,
+    marginBottom: 4,
+    gap: 6,
+  },
+  hintText: {
+    fontSize: 13,
+    color: '#0369A1',
+    flex: 1,
+    fontWeight: '500',
   },
 });
