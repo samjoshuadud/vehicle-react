@@ -1,7 +1,9 @@
 
 // Change accordingly (if changed machine or changed network)
 // const API_BASE_URL = 'http://192.168.87.15:8000'; // Backend server IP
-export const API_BASE_URL = 'http://192.168.100.114:8000'
+// export const API_BASE_URL = 'http://192.168.100.114:8000';
+  export const API_BASE_URL = 'http://172.20.10.3:8000';
+
 
 export interface User {
   user_id: number;
@@ -42,8 +44,8 @@ export interface FuelLog {
   fuel_id: number;
   vehicle_id: number;
   date: string;
-  liters: number;
-  kwh: number;  // For electric vehicles
+  liters?: number;  // Optional - only for gas vehicles
+  kwh?: number;  // Optional - only for electric vehicles
   cost: number;
   location?: string;
   latitude?: number;  // For fuel price tracking

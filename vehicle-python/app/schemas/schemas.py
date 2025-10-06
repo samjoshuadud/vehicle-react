@@ -78,12 +78,12 @@ class Maintenance(MaintenanceBase):
 # Fuel Schemas
 class FuelBase(BaseModel):
     date: date
-    liters: Optional[Decimal] = Field(None, decimal_places=2)
-    kwh: Optional[Decimal] = Field(None, decimal_places=2)  # For electric vehicles
-    cost: Optional[Decimal] = Field(None, decimal_places=2)
+    liters: Optional[Decimal] = None
+    kwh: Optional[Decimal] = None  # For electric vehicles
+    cost: Decimal  # Required field
     location: Optional[str] = None
-    latitude: Optional[Decimal] = Field(None, decimal_places=8)  # Precise location
-    longitude: Optional[Decimal] = Field(None, decimal_places=8)  # Precise location
+    latitude: Optional[Decimal] = None  # Precise location
+    longitude: Optional[Decimal] = None  # Precise location
     full_tank: bool = False
     notes: Optional[str] = None
 

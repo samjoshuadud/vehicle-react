@@ -102,15 +102,15 @@ export default function AddFuelLogScreen() {
       
       if (!isElectric && liters) {
         const volumeValue = parseFloat(liters);
-        litersInMetric = convertVolume(volumeValue, volumeUnit, 'L');
+        litersInMetric = parseFloat(convertVolume(volumeValue, volumeUnit, 'L').toFixed(2));
       }
       
       const fuelData: Partial<FuelLog> = {
         vehicle_id: vehicle.vehicle_id,
         date,
         liters: litersInMetric,
-        kwh: (isElectric && liters) ? parseFloat(liters) : undefined,
-        cost: costNum,
+        kwh: (isElectric && liters) ? parseFloat(parseFloat(liters).toFixed(2)) : undefined,
+        cost: parseFloat(costNum.toFixed(2)),
         location: location || undefined,
         latitude: locationCoords?.latitude,
         longitude: locationCoords?.longitude,
