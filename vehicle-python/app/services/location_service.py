@@ -241,10 +241,20 @@ class LocationService:
                 "max_price": float,
                 "report_count": int,
                 "last_updated": datetime,
-                "brand": str
+                "brand": str,
+                "fuel_prices": [
+                    {
+                        "fuel_type": str,
+                        "avg_price_per_liter": float,
+                        "min_price": float,
+                        "max_price": float,
+                        "report_count": int
+                    }
+                ]
             }
         """
         from datetime import datetime, timedelta
+        from collections import defaultdict
         
         # Calculate date threshold
         cutoff_date = datetime.now().date() - timedelta(days=days_back)
@@ -266,16 +276,16 @@ class LocationService:
                 continue
             
             # Get fuel logs for this cluster
-            fuel_query = db.query(models.Fuel).filter(
+            fuel_query = db.query(models.Fuel).join(models.Vehicle).filter(
                 models.Fuel.station_cluster_id == cluster.cluster_id,
                 models.Fuel.date >= cutoff_date
             )
             
             # Filter by fuel type if specified
             if fuel_type:
-                # Join with vehicle to get fuel_type
-                fuel_query = fuel_query.join(models.Vehicle).filter(
-                    models.Vehicle.fuel_type == fuel_type
+                # Use LIKE for partial matching (e.g., "Gasoline" matches "Gasoline (Unleaded)" and "Gasoline (Premium)")
+                fuel_query = fuel_query.filter(
+                    models.Vehicle.fuel_type.like(f"%{fuel_type}%")
                 )
             
             fuel_logs = fuel_query.all()
@@ -283,32 +293,66 @@ class LocationService:
             if not fuel_logs:
                 continue
             
-            # Calculate price statistics
-            prices_per_liter = []
+            # Group fuel logs by fuel type
+            logs_by_fuel_type = defaultdict(list)
             for log in fuel_logs:
-                fuel_amount = float(log.liters or log.kwh or 0)
-                if fuel_amount > 0 and log.cost:
-                    price_per_liter = float(log.cost) / fuel_amount
-                    prices_per_liter.append(price_per_liter)
+                vehicle = db.query(models.Vehicle).filter(
+                    models.Vehicle.vehicle_id == log.vehicle_id
+                ).first()
+                if vehicle and vehicle.fuel_type:
+                    logs_by_fuel_type[vehicle.fuel_type].append(log)
             
-            if not prices_per_liter:
+            # Calculate overall statistics and per-fuel-type statistics
+            all_prices = []
+            fuel_prices_array = []
+            last_updated = None
+            
+            for fuel_type_name, type_logs in logs_by_fuel_type.items():
+                # Calculate price statistics for this fuel type
+                prices_per_liter = []
+                for log in type_logs:
+                    fuel_amount = float(log.liters or log.kwh or 0)
+                    if fuel_amount > 0 and log.cost:
+                        price_per_liter = float(log.cost) / fuel_amount
+                        prices_per_liter.append(price_per_liter)
+                
+                if not prices_per_liter:
+                    continue
+                
+                # Update overall last_updated
+                fuel_type_last_updated = max(log.date for log in type_logs)
+                if last_updated is None or fuel_type_last_updated > last_updated:
+                    last_updated = fuel_type_last_updated
+                
+                # Add to fuel prices array
+                fuel_prices_array.append({
+                    "fuel_type": fuel_type_name,
+                    "avg_price_per_liter": round(sum(prices_per_liter) / len(prices_per_liter), 2),
+                    "min_price": round(min(prices_per_liter), 2),
+                    "max_price": round(max(prices_per_liter), 2),
+                    "report_count": len(prices_per_liter)
+                })
+                
+                # Add to overall prices for station average
+                all_prices.extend(prices_per_liter)
+            
+            if not all_prices or not fuel_prices_array:
                 continue
             
-            # Get most recent log date
-            last_updated = max(log.date for log in fuel_logs)
-            
+            # Calculate overall statistics
             results.append({
                 "cluster_id": cluster.cluster_id,
                 "name": cluster.normalized_name,
                 "latitude": float(cluster.latitude),
                 "longitude": float(cluster.longitude),
                 "distance_km": round(distance, 2),
-                "avg_price_per_liter": round(sum(prices_per_liter) / len(prices_per_liter), 2),
-                "min_price": round(min(prices_per_liter), 2),
-                "max_price": round(max(prices_per_liter), 2),
-                "report_count": len(prices_per_liter),
+                "avg_price_per_liter": round(sum(all_prices) / len(all_prices), 2),
+                "min_price": round(min(all_prices), 2),
+                "max_price": round(max(all_prices), 2),
+                "report_count": len(all_prices),
                 "last_updated": last_updated.isoformat(),
-                "brand": cluster.brand
+                "brand": cluster.brand,
+                "fuel_prices": fuel_prices_array  # Array of prices by fuel type
             })
         
         # Sort by distance

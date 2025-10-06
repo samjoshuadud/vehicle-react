@@ -26,6 +26,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useFocusEffect } from 'expo-router';
 import { API_BASE_URL } from '@/services/api';
 
+interface FuelPrice {
+  fuel_type: string;
+  avg_price_per_liter: number;
+  min_price: number;
+  max_price: number;
+  report_count: number;
+}
+
 interface FuelStation {
   cluster_id: string;
   name: string;
@@ -38,6 +46,8 @@ interface FuelStation {
   report_count: number;
   last_updated: string;
   brand: string | null;
+  fuel_type?: string | null;
+  fuel_prices?: FuelPrice[];  // Array of prices by fuel type
 }
 
 export default function FuelPricesScreen() {
@@ -51,6 +61,7 @@ export default function FuelPricesScreen() {
   const [showMap, setShowMap] = useState(true); // Toggle between map and list view
   const [searchRadius, setSearchRadius] = useState(10); // km
   const [fuelTypeFilter, setFuelTypeFilter] = useState<string | null>(null);
+  const [expandedStations, setExpandedStations] = useState<Set<string>>(new Set()); // Track expanded cards
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
@@ -260,7 +271,7 @@ export default function FuelPricesScreen() {
             const minPrice = Math.min(...prices);
             const maxPrice = Math.max(...prices);
             
-            // Add station markers
+            // Add station markers - one per location
             stations.forEach(station => {
               let markerClass = 'price-marker-average';
               
@@ -282,11 +293,40 @@ export default function FuelPricesScreen() {
               
               const lastUpdate = new Date(station.last_updated).toLocaleDateString();
               
+              // Helper function to format fuel type
+              function formatFuelType(fuelType) {
+                if (fuelType === 'Gasoline (Unleaded)') return '⛽ Unleaded';
+                if (fuelType === 'Gasoline (Premium)') return '⭐ Premium';
+                if (fuelType === 'Diesel') return '🚛 Diesel';
+                if (fuelType === 'Electric') return '⚡ Electric';
+                if (fuelType === 'Hybrid') return '🔋 Hybrid';
+                return fuelType;
+              }
+              
+              // Build fuel prices section
+              let fuelPricesHTML = '';
+              if (station.fuel_prices && station.fuel_prices.length > 0) {
+                fuelPricesHTML = '<div style="margin-top: 12px; border-top: 1px solid #E5E7EB; padding-top: 8px;">';
+                fuelPricesHTML += '<p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 600; color: #6B7280; text-transform: uppercase;">Available Prices</p>';
+                
+                station.fuel_prices.forEach(fp => {
+                  const fuelIcon = formatFuelType(fp.fuel_type);
+                  fuelPricesHTML += \`
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin: 6px 0; padding: 6px 8px; background: #F9FAFB; border-radius: 6px;">
+                      <span style="font-size: 12px; color: #4B5563; font-weight: 500;">\${fuelIcon}</span>
+                      <span style="font-size: 14px; color: #059669; font-weight: bold;">₱\${fp.avg_price_per_liter.toFixed(2)}/L</span>
+                    </div>
+                  \`;
+                });
+                
+                fuelPricesHTML += '</div>';
+              }
+              
               marker.bindPopup(\`
-                <div style="min-width: 200px;">
-                  <h3 style="margin: 0 0 8px 0; color: #111827;">\${station.name}</h3>
-                  <p style="margin: 4px 0; font-size: 18px; font-weight: bold; color: #059669;">
-                    ₱\${station.avg_price_per_liter.toFixed(2)}/L
+                <div style="min-width: 220px;">
+                  <h3 style="margin: 0 0 8px 0; color: #111827; font-size: 15px;">\${station.name}</h3>
+                  <p style="margin: 4px 0; font-size: 16px; font-weight: bold; color: #059669;">
+                    Avg: ₱\${station.avg_price_per_liter.toFixed(2)}/L
                   </p>
                   <p style="margin: 2px 0; font-size: 12px; color: #6B7280;">
                     📊 \${station.report_count} report\${station.report_count > 1 ? 's' : ''}
@@ -297,9 +337,13 @@ export default function FuelPricesScreen() {
                   <p style="margin: 2px 0; font-size: 12px; color: #6B7280;">
                     🕐 Updated: \${lastUpdate}
                   </p>
+                  \${fuelPricesHTML}
                 </div>
               \`);
             });
+                </div>
+              \`);
+            }
           </script>
         </body>
       </html>
@@ -377,20 +421,29 @@ export default function FuelPricesScreen() {
               20 km
             </Text>
           </TouchableOpacity>
+          <View style={styles.filterDivider} />
           <TouchableOpacity
             style={[styles.filterChip, fuelTypeFilter === null && styles.filterChipActive]}
             onPress={() => setFuelTypeFilter(null)}
           >
             <Text style={[styles.filterText, fuelTypeFilter === null && styles.filterTextActive]}>
-              All
+              All Fuel
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.filterChip, fuelTypeFilter === 'Gasoline' && styles.filterChipActive]}
-            onPress={() => setFuelTypeFilter('Gasoline')}
+            style={[styles.filterChip, fuelTypeFilter === 'Gasoline (Unleaded)' && styles.filterChipActive]}
+            onPress={() => setFuelTypeFilter('Gasoline (Unleaded)')}
           >
-            <Text style={[styles.filterText, fuelTypeFilter === 'Gasoline' && styles.filterTextActive]}>
-              Gasoline
+            <Text style={[styles.filterText, fuelTypeFilter === 'Gasoline (Unleaded)' && styles.filterTextActive]}>
+              ⛽ Unleaded
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterChip, fuelTypeFilter === 'Gasoline (Premium)' && styles.filterChipActive]}
+            onPress={() => setFuelTypeFilter('Gasoline (Premium)')}
+          >
+            <Text style={[styles.filterText, fuelTypeFilter === 'Gasoline (Premium)' && styles.filterTextActive]}>
+              ⭐ Premium
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -398,7 +451,23 @@ export default function FuelPricesScreen() {
             onPress={() => setFuelTypeFilter('Diesel')}
           >
             <Text style={[styles.filterText, fuelTypeFilter === 'Diesel' && styles.filterTextActive]}>
-              Diesel
+              🚛 Diesel
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterChip, fuelTypeFilter === 'Electric' && styles.filterChipActive]}
+            onPress={() => setFuelTypeFilter('Electric')}
+          >
+            <Text style={[styles.filterText, fuelTypeFilter === 'Electric' && styles.filterTextActive]}>
+              ⚡ Electric
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterChip, fuelTypeFilter === 'Hybrid' && styles.filterChipActive]}
+            onPress={() => setFuelTypeFilter('Hybrid')}
+          >
+            <Text style={[styles.filterText, fuelTypeFilter === 'Hybrid' && styles.filterTextActive]}>
+              🔋 Hybrid
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -442,37 +511,110 @@ export default function FuelPricesScreen() {
               </Text>
             </View>
           ) : (
-            stations.map((station) => (
-              <View key={station.cluster_id} style={styles.stationCard}>
-                <View style={styles.stationHeader}>
-                  <View style={styles.stationInfo}>
-                    <Text style={styles.stationName}>{station.name}</Text>
-                    <Text style={styles.stationDistance}>
-                      📍 {station.distance_km} km away
+            stations.map((station) => {
+              const isExpanded = expandedStations.has(station.cluster_id);
+              const hasMultipleFuelTypes = station.fuel_prices && station.fuel_prices.length > 1;
+              const hasSingleFuelType = station.fuel_prices && station.fuel_prices.length === 1;
+              
+              const formatFuelType = (ft: string) => {
+                if (ft === 'Gasoline (Unleaded)') return '⛽ Unleaded';
+                if (ft === 'Gasoline (Premium)') return '⭐ Premium';
+                if (ft === 'Diesel') return '🚛 Diesel';
+                if (ft === 'Electric') return '⚡ Electric';
+                if (ft === 'Hybrid') return '🔋 Hybrid';
+                return ft;
+              };
+              
+              return (
+                <TouchableOpacity
+                  key={station.cluster_id}
+                  style={styles.stationCard}
+                  onPress={() => {
+                    if (hasMultipleFuelTypes) {
+                      const newExpanded = new Set(expandedStations);
+                      if (isExpanded) {
+                        newExpanded.delete(station.cluster_id);
+                      } else {
+                        newExpanded.add(station.cluster_id);
+                      }
+                      setExpandedStations(newExpanded);
+                    }
+                  }}
+                  activeOpacity={hasMultipleFuelTypes ? 0.7 : 1}
+                >
+                  <View style={styles.stationHeader}>
+                    <View style={styles.stationInfo}>
+                      <View style={styles.stationNameRow}>
+                        <Text style={styles.stationName}>{station.name}</Text>
+                        {hasMultipleFuelTypes && (
+                          <Ionicons 
+                            name={isExpanded ? "chevron-up" : "chevron-down"} 
+                            size={20} 
+                            color="#6B7280" 
+                          />
+                        )}
+                        {hasSingleFuelType && station.fuel_prices && (
+                          <View style={styles.fuelTypeBadge}>
+                            <Text style={styles.fuelTypeBadgeText}>
+                              {formatFuelType(station.fuel_prices[0].fuel_type)}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.stationDistance}>
+                        📍 {station.distance_km} km away
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.priceIndicator,
+                        { backgroundColor: getPriceColor(station.avg_price_per_liter, allPrices) },
+                      ]}
+                    >
+                      <Text style={styles.priceText}>
+                        {currencySymbol}{station.avg_price_per_liter.toFixed(2)}
+                      </Text>
+                      <Text style={styles.perLiter}>/L</Text>
+                    </View>
+                  </View>
+                  <View style={styles.stationMeta}>
+                    <Text style={styles.metaText}>
+                      📊 {station.report_count} report{station.report_count > 1 ? 's' : ''}
+                    </Text>
+                    <Text style={styles.metaText}>
+                      🕐 {new Date(station.last_updated).toLocaleDateString()}
                     </Text>
                   </View>
-                  <View
-                    style={[
-                      styles.priceIndicator,
-                      { backgroundColor: getPriceColor(station.avg_price_per_liter, allPrices) },
-                    ]}
-                  >
-                    <Text style={styles.priceText}>
-                      {currencySymbol}{station.avg_price_per_liter.toFixed(2)}
-                    </Text>
-                    <Text style={styles.perLiter}>/L</Text>
-                  </View>
-                </View>
-                <View style={styles.stationMeta}>
-                  <Text style={styles.metaText}>
-                    📊 {station.report_count} report{station.report_count > 1 ? 's' : ''}
-                  </Text>
-                  <Text style={styles.metaText}>
-                    🕐 {new Date(station.last_updated).toLocaleDateString()}
-                  </Text>
-                </View>
-              </View>
-            ))
+                  
+                  {/* Expandable fuel prices section */}
+                  {isExpanded && station.fuel_prices && station.fuel_prices.length > 0 && (
+                    <View style={styles.fuelPricesContainer}>
+                      <View style={styles.fuelPricesDivider} />
+                      <Text style={styles.fuelPricesTitle}>Available Prices</Text>
+                      {station.fuel_prices.map((fuelPrice, index) => {
+                        const formatFuelType = (ft: string) => {
+                          if (ft === 'Gasoline (Unleaded)') return '⛽ Unleaded';
+                          if (ft === 'Gasoline (Premium)') return '⭐ Premium';
+                          if (ft === 'Diesel') return '🚛 Diesel';
+                          if (ft === 'Electric') return '⚡ Electric';
+                          if (ft === 'Hybrid') return '🔋 Hybrid';
+                          return ft;
+                        };
+                        
+                        return (
+                          <View key={index} style={styles.fuelPriceRow}>
+                            <Text style={styles.fuelPriceType}>{formatFuelType(fuelPrice.fuel_type)}</Text>
+                            <Text style={styles.fuelPriceValue}>
+                              {currencySymbol}{fuelPrice.avg_price_per_liter.toFixed(2)}/L
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })
           )}
         </ScrollView>
       )}
@@ -554,6 +696,12 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: '#FFFFFF',
   },
+  filterDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 8,
+  },
   mapContainer: {
     flex: 1,
   },
@@ -602,11 +750,30 @@ const styles = StyleSheet.create({
   stationInfo: {
     flex: 1,
   },
+  stationNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4,
+  },
   stationName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: 4,
+  },
+  fuelTypeBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  fuelTypeBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#1E40AF',
   },
   stationDistance: {
     fontSize: 14,
@@ -636,6 +803,43 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 12,
     color: '#6B7280',
+  },
+  fuelPricesContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  fuelPricesDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginBottom: 8,
+  },
+  fuelPricesTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  fuelPriceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 10,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  fuelPriceType: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  fuelPriceValue: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#059669',
   },
   footer: {
     flexDirection: 'row',

@@ -416,7 +416,9 @@ export default function VehicleDetailScreen() {
         
         <View style={styles.statItem}>
           <Ionicons name="water-outline" size={24} color="#3B82F6" />
-          <Text style={styles.statValue}>{vehicle.fuel_type || 'N/A'}</Text>
+          <Text style={styles.statValue} numberOfLines={2} ellipsizeMode="tail">
+            {vehicle.fuel_type || 'N/A'}
+          </Text>
           <Text style={styles.statLabel}>Fuel Type</Text>
         </View>
       </View>
@@ -553,7 +555,7 @@ export default function VehicleDetailScreen() {
                       id: log.fuel_id.toString(),
                       vehicleId: log.vehicle_id.toString(),
                       date: log.date,
-                      mileage: log.odometer_reading || 0,
+                      // mileage: log.odometer_reading || 0,
                       liters: (vehicle?.fuel_type === 'Electric') ? (log.kwh || 0) : (log.liters || 0),
                       kwh: log.kwh || 0,
                       cost: typeof log.cost === 'number' ? log.cost : (log.cost ? parseFloat(String(log.cost)) : 0),
@@ -720,12 +722,14 @@ const styles = StyleSheet.create({
   statItem: {
     flex: 1,
     alignItems: 'center',
+    paddingHorizontal: 4,
   },
   statValue: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
     marginTop: 4,
+    textAlign: 'center',
   },
   statLabel: {
     fontSize: 12,
