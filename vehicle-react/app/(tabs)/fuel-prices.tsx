@@ -341,9 +341,6 @@ export default function FuelPricesScreen() {
                 </div>
               \`);
             });
-                </div>
-              \`);
-            }
           </script>
         </body>
       </html>
