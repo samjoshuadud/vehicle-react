@@ -51,7 +51,7 @@ interface FuelStation {
 }
 
 export default function FuelPricesScreen() {
-  const { statusBarStyle, backgroundColor, currencySymbol } = useTheme();
+  const { statusBarStyle, backgroundColor, currencySymbol, distanceUnit } = useTheme();
   const { token } = useAuth();
   
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -63,6 +63,7 @@ export default function FuelPricesScreen() {
   const [fuelTypeFilter, setFuelTypeFilter] = useState<string | null>(null);
   const [brandFilter, setBrandFilter] = useState<string | null>(null); // Brand filter (Shell, Petron, etc.)
   const [expandedStations, setExpandedStations] = useState<Set<string>>(new Set()); // Track expanded cards
+  const [expandedFilter, setExpandedFilter] = useState<'radius' | 'fuel' | 'brand' | null>(null); // Track which filter is expanded
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
@@ -172,6 +173,34 @@ export default function FuelPricesScreen() {
     if (userLocation) {
       fetchFuelPrices(userLocation.latitude, userLocation.longitude);
     }
+  };
+
+  // Convert km to miles
+  const kmToMiles = (km: number) => km * 0.621371;
+  const milesToKm = (miles: number) => miles / 0.621371;
+
+  // Format distance based on user preference
+  const formatDistance = (km: number) => {
+    if (distanceUnit === 'mi') {
+      return `${kmToMiles(km).toFixed(1)} mi`;
+    }
+    return `${km} km`;
+  };
+
+  // Get radius options based on unit
+  const getRadiusOptions = () => {
+    if (distanceUnit === 'mi') {
+      return [
+        { value: milesToKm(3), label: '3 mi' },
+        { value: milesToKm(6), label: '6 mi' },
+        { value: milesToKm(12), label: '12 mi' },
+      ];
+    }
+    return [
+      { value: 5, label: '5 km' },
+      { value: 10, label: '10 km' },
+      { value: 20, label: '20 km' },
+    ];
   };
 
   const getMapHTML = () => {
@@ -412,187 +441,245 @@ export default function FuelPricesScreen() {
 
       {/* Filters */}
       <View style={styles.filtersContainer}>
-        {/* Radius Filter */}
-        <View style={styles.filterSection}>
-          <View style={styles.filterSectionHeader}>
-            <Ionicons name="navigate-circle-outline" size={16} color="#6B7280" />
-            <Text style={styles.filterSectionTitle}>Radius</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScrollView}>
-            <TouchableOpacity
-              style={[styles.filterChip, searchRadius === 5 && styles.filterChipActive]}
-              onPress={() => setSearchRadius(5)}
-            >
-              <Text style={[styles.filterText, searchRadius === 5 && styles.filterTextActive]}>
-                5 km
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, searchRadius === 10 && styles.filterChipActive]}
-              onPress={() => setSearchRadius(10)}
-            >
-              <Text style={[styles.filterText, searchRadius === 10 && styles.filterTextActive]}>
-                10 km
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, searchRadius === 20 && styles.filterChipActive]}
-              onPress={() => setSearchRadius(20)}
-            >
-              <Text style={[styles.filterText, searchRadius === 20 && styles.filterTextActive]}>
-                20 km
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
+        <View style={styles.filterButtonsRow}>
+          {/* Radius Filter Button */}
+          <TouchableOpacity
+            style={[styles.filterButton, expandedFilter === 'radius' && styles.filterButtonActive]}
+            onPress={() => setExpandedFilter(expandedFilter === 'radius' ? null : 'radius')}
+          >
+            <Ionicons name="navigate-circle" size={16} color={expandedFilter === 'radius' ? "#FFFFFF" : "#3B82F6"} />
+            <Text style={[styles.filterButtonText, expandedFilter === 'radius' && styles.filterButtonTextActive]}>
+              Radius
+            </Text>
+            <Ionicons 
+              name={expandedFilter === 'radius' ? "chevron-up" : "chevron-down"} 
+              size={16} 
+              color={expandedFilter === 'radius' ? "#FFFFFF" : "#6B7280"} 
+            />
+          </TouchableOpacity>
+
+          {/* Fuel Type Filter Button */}
+          <TouchableOpacity
+            style={[styles.filterButton, expandedFilter === 'fuel' && styles.filterButtonActive]}
+            onPress={() => setExpandedFilter(expandedFilter === 'fuel' ? null : 'fuel')}
+          >
+            <Ionicons name="water" size={16} color={expandedFilter === 'fuel' ? "#FFFFFF" : "#3B82F6"} />
+            <Text style={[styles.filterButtonText, expandedFilter === 'fuel' && styles.filterButtonTextActive]}>
+              Fuel Type
+            </Text>
+            <Ionicons 
+              name={expandedFilter === 'fuel' ? "chevron-up" : "chevron-down"} 
+              size={16} 
+              color={expandedFilter === 'fuel' ? "#FFFFFF" : "#6B7280"} 
+            />
+          </TouchableOpacity>
+
+          {/* Brand Filter Button */}
+          <TouchableOpacity
+            style={[styles.filterButton, expandedFilter === 'brand' && styles.filterButtonActive]}
+            onPress={() => setExpandedFilter(expandedFilter === 'brand' ? null : 'brand')}
+          >
+            <Ionicons name="business" size={16} color={expandedFilter === 'brand' ? "#FFFFFF" : "#3B82F6"} />
+            <Text style={[styles.filterButtonText, expandedFilter === 'brand' && styles.filterButtonTextActive]}>
+              Brand
+            </Text>
+            <Ionicons 
+              name={expandedFilter === 'brand' ? "chevron-up" : "chevron-down"} 
+              size={16} 
+              color={expandedFilter === 'brand' ? "#FFFFFF" : "#6B7280"} 
+            />
+          </TouchableOpacity>
         </View>
 
-        {/* Fuel Type Filter */}
-        <View style={styles.filterSection}>
-          <View style={styles.filterSectionHeader}>
-            <Ionicons name="water-outline" size={16} color="#6B7280" />
-            <Text style={styles.filterSectionTitle}>Fuel Type</Text>
+        {/* Expanded Filter Options */}
+        {expandedFilter === 'radius' && (
+          <View style={styles.filterOptionsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterOptions}>
+              {getRadiusOptions().map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[styles.filterChip, searchRadius === option.value && styles.filterChipActive]}
+                  onPress={() => {
+                    setSearchRadius(option.value);
+                    setExpandedFilter(null);
+                  }}
+                >
+                  <Text style={[styles.filterText, searchRadius === option.value && styles.filterTextActive]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScrollView}>
-            <TouchableOpacity
-              style={[styles.filterChip, fuelTypeFilter === null && styles.filterChipActive]}
-              onPress={() => setFuelTypeFilter(null)}
-            >
-              <Text style={[styles.filterText, fuelTypeFilter === null && styles.filterTextActive]}>
-                All
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, fuelTypeFilter === 'Gasoline (Unleaded)' && styles.filterChipActive]}
-              onPress={() => setFuelTypeFilter('Gasoline (Unleaded)')}
-            >
-              <Text style={[styles.filterText, fuelTypeFilter === 'Gasoline (Unleaded)' && styles.filterTextActive]}>
-                ⛽ Unleaded
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, fuelTypeFilter === 'Gasoline (Premium)' && styles.filterChipActive]}
-              onPress={() => setFuelTypeFilter('Gasoline (Premium)')}
-            >
-              <Text style={[styles.filterText, fuelTypeFilter === 'Gasoline (Premium)' && styles.filterTextActive]}>
-                ⭐ Premium
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, fuelTypeFilter === 'Diesel' && styles.filterChipActive]}
-              onPress={() => setFuelTypeFilter('Diesel')}
-            >
-              <Text style={[styles.filterText, fuelTypeFilter === 'Diesel' && styles.filterTextActive]}>
-                🚛 Diesel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, fuelTypeFilter === 'Electric' && styles.filterChipActive]}
-              onPress={() => setFuelTypeFilter('Electric')}
-            >
-              <Text style={[styles.filterText, fuelTypeFilter === 'Electric' && styles.filterTextActive]}>
-                ⚡ Electric
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, fuelTypeFilter === 'Hybrid' && styles.filterChipActive]}
-              onPress={() => setFuelTypeFilter('Hybrid')}
-            >
-              <Text style={[styles.filterText, fuelTypeFilter === 'Hybrid' && styles.filterTextActive]}>
-                🔋 Hybrid
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+        )}
 
-        {/* Brand Filter */}
-        <View style={styles.filterSection}>
-          <View style={styles.filterSectionHeader}>
-            <Ionicons name="business-outline" size={16} color="#6B7280" />
-            <Text style={styles.filterSectionTitle}>Gas Station Brand</Text>
+        {expandedFilter === 'fuel' && (
+          <View style={styles.filterOptionsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterOptions}>
+              <TouchableOpacity
+                style={[styles.filterChip, fuelTypeFilter === null && styles.filterChipActive]}
+                onPress={() => {
+                  setFuelTypeFilter(null);
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, fuelTypeFilter === null && styles.filterTextActive]}>
+                  All
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, fuelTypeFilter === 'Gasoline (Unleaded)' && styles.filterChipActive]}
+                onPress={() => {
+                  setFuelTypeFilter('Gasoline (Unleaded)');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, fuelTypeFilter === 'Gasoline (Unleaded)' && styles.filterTextActive]}>
+                  ⛽ Unleaded
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, fuelTypeFilter === 'Gasoline (Premium)' && styles.filterChipActive]}
+                onPress={() => {
+                  setFuelTypeFilter('Gasoline (Premium)');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, fuelTypeFilter === 'Gasoline (Premium)' && styles.filterTextActive]}>
+                  ⭐ Premium
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, fuelTypeFilter === 'Diesel' && styles.filterChipActive]}
+                onPress={() => {
+                  setFuelTypeFilter('Diesel');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, fuelTypeFilter === 'Diesel' && styles.filterTextActive]}>
+                  🚛 Diesel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, fuelTypeFilter === 'Electric' && styles.filterChipActive]}
+                onPress={() => {
+                  setFuelTypeFilter('Electric');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, fuelTypeFilter === 'Electric' && styles.filterTextActive]}>
+                  ⚡ Electric
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScrollView}>
-            <TouchableOpacity
-              style={[styles.filterChip, brandFilter === null && styles.filterChipActive]}
-              onPress={() => setBrandFilter(null)}
-            >
-              <Text style={[styles.filterText, brandFilter === null && styles.filterTextActive]}>
-                All
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, brandFilter === 'Shell' && styles.filterChipActive]}
-              onPress={() => setBrandFilter('Shell')}
-            >
-              <Text style={[styles.filterText, brandFilter === 'Shell' && styles.filterTextActive]}>
-                🐚 Shell
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, brandFilter === 'Petron' && styles.filterChipActive]}
-              onPress={() => setBrandFilter('Petron')}
-            >
-              <Text style={[styles.filterText, brandFilter === 'Petron' && styles.filterTextActive]}>
-                ⭐ Petron
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, brandFilter === 'Caltex' && styles.filterChipActive]}
-              onPress={() => setBrandFilter('Caltex')}
-            >
-              <Text style={[styles.filterText, brandFilter === 'Caltex' && styles.filterTextActive]}>
-                🔺 Caltex
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, brandFilter === 'Phoenix' && styles.filterChipActive]}
-              onPress={() => setBrandFilter('Phoenix')}
-            >
-              <Text style={[styles.filterText, brandFilter === 'Phoenix' && styles.filterTextActive]}>
-                🔥 Phoenix
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, brandFilter === 'Seaoil' && styles.filterChipActive]}
-              onPress={() => setBrandFilter('Seaoil')}
-            >
-              <Text style={[styles.filterText, brandFilter === 'Seaoil' && styles.filterTextActive]}>
-                🌊 Seaoil
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, brandFilter === 'Unioil' && styles.filterChipActive]}
-              onPress={() => setBrandFilter('Unioil')}
-            >
-              <Text style={[styles.filterText, brandFilter === 'Unioil' && styles.filterTextActive]}>
-                🔷 Unioil
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, brandFilter === 'Cleanfuel' && styles.filterChipActive]}
-              onPress={() => setBrandFilter('Cleanfuel')}
-            >
-              <Text style={[styles.filterText, brandFilter === 'Cleanfuel' && styles.filterTextActive]}>
-                ♻️ Cleanfuel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, brandFilter === 'Total' && styles.filterChipActive]}
-              onPress={() => setBrandFilter('Total')}
-            >
-              <Text style={[styles.filterText, brandFilter === 'Total' && styles.filterTextActive]}>
-                ⚫ Total
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, brandFilter === 'Others' && styles.filterChipActive]}
-              onPress={() => setBrandFilter('Others')}
-            >
-              <Text style={[styles.filterText, brandFilter === 'Others' && styles.filterTextActive]}>
-                📍 Others
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+        )}
+
+        {expandedFilter === 'brand' && (
+          <View style={styles.filterOptionsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterOptions}>
+              <TouchableOpacity
+                style={[styles.filterChip, brandFilter === null && styles.filterChipActive]}
+                onPress={() => {
+                  setBrandFilter(null);
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, brandFilter === null && styles.filterTextActive]}>
+                  All
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, brandFilter === 'Shell' && styles.filterChipActive]}
+                onPress={() => {
+                  setBrandFilter('Shell');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, brandFilter === 'Shell' && styles.filterTextActive]}>
+                  🐚 Shell
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, brandFilter === 'Petron' && styles.filterChipActive]}
+                onPress={() => {
+                  setBrandFilter('Petron');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, brandFilter === 'Petron' && styles.filterTextActive]}>
+                  ⭐ Petron
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, brandFilter === 'Caltex' && styles.filterChipActive]}
+                onPress={() => {
+                  setBrandFilter('Caltex');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, brandFilter === 'Caltex' && styles.filterTextActive]}>
+                  🔺 Caltex
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, brandFilter === 'Phoenix' && styles.filterChipActive]}
+                onPress={() => {
+                  setBrandFilter('Phoenix');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, brandFilter === 'Phoenix' && styles.filterTextActive]}>
+                  🔥 Phoenix
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, brandFilter === 'Seaoil' && styles.filterChipActive]}
+                onPress={() => {
+                  setBrandFilter('Seaoil');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, brandFilter === 'Seaoil' && styles.filterTextActive]}>
+                  🌊 Seaoil
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, brandFilter === 'Cleanfuel' && styles.filterChipActive]}
+                onPress={() => {
+                  setBrandFilter('Cleanfuel');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, brandFilter === 'Cleanfuel' && styles.filterTextActive]}>
+                  ♻️ Cleanfuel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, brandFilter === 'Total' && styles.filterChipActive]}
+                onPress={() => {
+                  setBrandFilter('Total');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, brandFilter === 'Total' && styles.filterTextActive]}>
+                  ⚫ Total
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, brandFilter === 'Others' && styles.filterChipActive]}
+                onPress={() => {
+                  setBrandFilter('Others');
+                  setExpandedFilter(null);
+                }}
+              >
+                <Text style={[styles.filterText, brandFilter === 'Others' && styles.filterTextActive]}>
+                  📍 Others
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       {/* Map or List View */}
@@ -795,37 +882,55 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  filterSection: {
-    marginBottom: 12,
+  filterButtonsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
   },
-  filterSectionHeader: {
+  filterButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 8,
+    justifyContent: 'center',
     gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
   },
-  filterSectionTitle: {
+  filterButtonActive: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  filterButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: '#3B82F6',
   },
-  filterScrollView: {
+  filterButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  filterOptionsContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingVertical: 10,
+  },
+  filterOptions: {
     paddingHorizontal: 16,
+    gap: 8,
   },
   filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 16,
     backgroundColor: '#F3F4F6',
-    marginRight: 8,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   filterChipActive: {
@@ -833,7 +938,7 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
   },
   filterText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: '#6B7280',
   },
