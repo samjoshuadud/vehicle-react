@@ -145,6 +145,7 @@ Comprehensive maintenance record keeping:
 
 - **Radius:** 5km / 10km / 25km / 50km
 - **Fuel Type:** All / Unleaded / Premium / Diesel / Electric / Hybrid
+- **Brand:** All / Shell / Petron / Caltex / Phoenix / Seaoil / Unioil / Cleanfuel / Total / Others
 - **Country:** Philippines (default)
 
 #### **Price Calculation:**

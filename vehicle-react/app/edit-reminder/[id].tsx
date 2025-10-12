@@ -187,6 +187,7 @@ export default function EditReminderScreen() {
             label="Due Date"
             value={date}
             onChangeDate={setDate}
+            minimumDate={new Date()}
             required
           />
 
