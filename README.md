@@ -166,14 +166,38 @@ Comprehensive maintenance record keeping:
 
 ### 5. **Manual Reminders System** 🔔
 
-Create custom maintenance reminders:
+Create custom maintenance reminders with smart templates:
+
+- **Quick Setup Templates:**
+  - ⚙️ **Routine Maintenance:**
+    - Oil Change (every 3 months)
+    - Tire Rotation (every 6 months)
+    - Air Filter Replacement (every 6 months)
+    - Cabin Air Filter (every 6 months)
+  - 📅 **Periodic Maintenance:**
+    - Brake Inspection (yearly)
+    - Battery Check (yearly)
+    - Coolant Flush (every 2 years)
+    - Transmission Service (every 2 years)
+    - Spark Plugs Replacement (every 2 years)
+    - Wheel Alignment (yearly)
+  - 🗓️ **Annual Maintenance:**
+    - Annual Vehicle Inspection
+    - Rainy Season Preparation (wipers, lights, tire tread)
 
 - **Reminder Configuration:**
-  - 📝 Title & Description
-  - 📅 Due date
+  - 📝 Title & Description (auto-filled from templates)
+  - 📅 Due date (auto-calculated based on interval)
   - 🔁 Repeat intervals (None, Daily, Weekly, Monthly, Yearly)
   - 📏 Mileage-based intervals
   - 🚗 Vehicle association
+
+- **Template Features:**
+  - 🎯 One-tap setup - auto-fills title, description, and interval
+  - 📅 Smart due date calculation
+  - 🔄 Automatic repeat interval setting
+  - 📝 Professional maintenance descriptions
+  - ⚡ Quick access from reminder creation screen
 
 - **Filter Views:**
   - All Reminders

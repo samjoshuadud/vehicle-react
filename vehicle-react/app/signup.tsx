@@ -97,7 +97,7 @@ export default function SignupScreen() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.appName}>Carfun</Text>
+            <Text style={styles.appName}>Garahe</Text>
             <Text style={styles.tagline}>Create an account to get started</Text>
           </View>
 

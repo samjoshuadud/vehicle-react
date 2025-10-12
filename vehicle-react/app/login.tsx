@@ -80,7 +80,7 @@ export default function LoginScreen() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.appName}>Carfun</Text>
+            <Text style={styles.appName}>Garahe</Text>
             <Text style={styles.tagline}>Track vehicle maintenance and fuel prices with ease</Text>
           </View>
 
