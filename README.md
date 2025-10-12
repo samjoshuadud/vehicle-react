@@ -192,10 +192,43 @@ Home screen with vehicle overview:
   - 📏 Current mileage
   - ⛽ Fuel type badge
   - 📅 Purchase date
+  - 🆕 **Latest vehicles shown first**
 
 ---
 
-### 7. **Vehicle Detail Page** 🚗
+### 7. **Spending Insights** 💰
+
+Dedicated analytics tab for comprehensive spending tracking:
+
+#### **Current Month Overview:**
+- 💰 **Total Monthly Spending** (Fuel + Maintenance combined)
+- 📊 **Category Breakdown:**
+  - ⛽ Fuel: Total cost & fill-up count
+  - 🔧 Maintenance: Total cost & service count
+- 📈 **Trend Analysis:**
+  - Percentage change vs previous month
+  - Visual indicators (up/down arrows)
+  - Color-coded badges (red for increase, green for decrease)
+
+#### **Monthly History:**
+- 📅 Last 3 months spending overview
+- � Transaction counts per month
+- � Easy comparison between months
+
+#### **Quick Stats:**
+- � Total vehicles managed
+- ⛽ Total fuel logs recorded
+- 🔧 Total maintenance services tracked
+
+#### **Features:**
+- � Pull-to-refresh data
+- 📱 Beautiful card-based UI
+- � Color-coded visual indicators
+- 💡 Empty state guidance
+
+---
+
+### 8. **Vehicle Detail Page** 🚗
 
 Comprehensive vehicle information:
 

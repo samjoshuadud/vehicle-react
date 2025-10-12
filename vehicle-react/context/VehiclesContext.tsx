@@ -47,11 +47,14 @@ export const VehiclesProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsLoading(true);
       console.log('VehiclesContext: Refreshing vehicles');
       const vehiclesList = await apiService.getVehicles(token);
-      setVehicles(vehiclesList);
+      
+      // Sort vehicles by vehicle_id in descending order (latest first)
+      const sortedVehicles = [...vehiclesList].sort((a, b) => b.vehicle_id - a.vehicle_id);
+      setVehicles(sortedVehicles);
       
       // If no current vehicle is set and we have vehicles, set the first one as current
-      if (!currentVehicle && vehiclesList.length > 0) {
-        setCurrentVehicle(vehiclesList[0]);
+      if (!currentVehicle && sortedVehicles.length > 0) {
+        setCurrentVehicle(sortedVehicles[0]);
       }
       
       console.log('VehiclesContext: Vehicles refreshed successfully');
@@ -73,7 +76,9 @@ export const VehiclesProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       console.log('VehiclesContext: Adding new vehicle');
       const newVehicle = await apiService.createVehicle(token, vehicleData);
-      setVehicles(prev => [...prev, newVehicle]);
+      
+      // Add new vehicle at the beginning of the array (latest first)
+      setVehicles(prev => [newVehicle, ...prev]);
       
       // If this is the first vehicle, make it the current one
       if (vehicles.length === 0) {
