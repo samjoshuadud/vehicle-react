@@ -45,9 +45,12 @@ interface FuelStation {
   max_price: number;
   report_count: number;
   last_updated: string;
+  hours_since_update: number;
   brand: string | null;
   fuel_type?: string | null;
   fuel_prices?: FuelPrice[];  // Array of prices by fuel type
+  is_fallback?: boolean;
+  fallback_message?: string;
 }
 
 export default function FuelPricesScreen() {
@@ -62,13 +65,14 @@ export default function FuelPricesScreen() {
   const [searchRadius, setSearchRadius] = useState(10); // km
   const [fuelTypeFilter, setFuelTypeFilter] = useState<string | null>(null);
   const [brandFilter, setBrandFilter] = useState<string | null>(null); // Brand filter (Shell, Petron, etc.)
+  const [timeWindow, setTimeWindow] = useState<'today' | '24h' | '3d' | '7d'>('3d'); // Time window filter
   const [expandedStations, setExpandedStations] = useState<Set<string>>(new Set()); // Track expanded cards
-  const [expandedFilter, setExpandedFilter] = useState<'radius' | 'fuel' | 'brand' | null>(null); // Track which filter is expanded
+  const [expandedFilter, setExpandedFilter] = useState<'radius' | 'fuel' | 'brand' | 'time' | null>(null); // Track which filter is expanded
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
     requestLocationAndFetch();
-  }, [searchRadius, fuelTypeFilter, brandFilter]);
+  }, [searchRadius, fuelTypeFilter, brandFilter, timeWindow]);
 
   // Refetch prices whenever the tab becomes focused (real-time updates)
   useFocusEffect(
@@ -76,7 +80,7 @@ export default function FuelPricesScreen() {
       if (userLocation) {
         fetchFuelPrices(userLocation.latitude, userLocation.longitude);
       }
-    }, [userLocation, searchRadius, fuelTypeFilter, brandFilter, token])
+    }, [userLocation, searchRadius, fuelTypeFilter, brandFilter, timeWindow, token])
   );
 
   const requestLocationAndFetch = async () => {
@@ -119,7 +123,7 @@ export default function FuelPricesScreen() {
         latitude: lat.toString(),
         longitude: lng.toString(),
         radius_km: searchRadius.toString(),
-        days_back: '7',
+        time_window: timeWindow,
       });
 
       if (fuelTypeFilter) {
@@ -186,6 +190,39 @@ export default function FuelPricesScreen() {
     }
     return `${km} km`;
   };
+
+  // Get freshness badge based on hours since update
+  const getFreshnessBadge = (hoursSinceUpdate: number) => {
+    if (hoursSinceUpdate < 24) {
+      return {
+        emoji: '🟢',
+        text: hoursSinceUpdate < 1 ? 'Just now' : `${hoursSinceUpdate}h ago`,
+        color: '#10B981'
+      };
+    } else if (hoursSinceUpdate < 72) {
+      const days = Math.floor(hoursSinceUpdate / 24);
+      return {
+        emoji: '🟡',
+        text: `${days}d ago`,
+        color: '#F59E0B'
+      };
+    } else {
+      const days = Math.floor(hoursSinceUpdate / 24);
+      return {
+        emoji: '🔴',
+        text: `${days}d ago`,
+        color: '#EF4444'
+      };
+    }
+  };
+
+  // Get time window options
+  const getTimeWindowOptions = () => [
+    { value: 'today' as const, label: 'Today' },
+    { value: '24h' as const, label: 'Last 24h' },
+    { value: '3d' as const, label: 'Last 3 days' },
+    { value: '7d' as const, label: 'Last 7 days' },
+  ];
 
   // Get radius options based on unit
   const getRadiusOptions = () => {
@@ -441,7 +478,11 @@ export default function FuelPricesScreen() {
 
       {/* Filters */}
       <View style={styles.filtersContainer}>
-        <View style={styles.filterButtonsRow}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterButtonsRow}
+        >
           {/* Radius Filter Button */}
           <TouchableOpacity
             style={[styles.filterButton, expandedFilter === 'radius' && styles.filterButtonActive]}
@@ -489,7 +530,23 @@ export default function FuelPricesScreen() {
               color={expandedFilter === 'brand' ? "#FFFFFF" : "#6B7280"} 
             />
           </TouchableOpacity>
-        </View>
+
+          {/* Time Window Filter Button */}
+          <TouchableOpacity
+            style={[styles.filterButton, expandedFilter === 'time' && styles.filterButtonActive]}
+            onPress={() => setExpandedFilter(expandedFilter === 'time' ? null : 'time')}
+          >
+            <Ionicons name="time" size={16} color={expandedFilter === 'time' ? "#FFFFFF" : "#3B82F6"} />
+            <Text style={[styles.filterButtonText, expandedFilter === 'time' && styles.filterButtonTextActive]}>
+              Freshness
+            </Text>
+            <Ionicons 
+              name={expandedFilter === 'time' ? "chevron-up" : "chevron-down"} 
+              size={16} 
+              color={expandedFilter === 'time' ? "#FFFFFF" : "#6B7280"} 
+            />
+          </TouchableOpacity>
+        </ScrollView>
 
         {/* Expanded Filter Options */}
         {expandedFilter === 'radius' && (
@@ -680,6 +737,27 @@ export default function FuelPricesScreen() {
             </ScrollView>
           </View>
         )}
+
+        {expandedFilter === 'time' && (
+          <View style={styles.filterOptionsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterOptions}>
+              {getTimeWindowOptions().map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[styles.filterChip, timeWindow === option.value && styles.filterChipActive]}
+                  onPress={() => {
+                    setTimeWindow(option.value);
+                    setExpandedFilter(null);
+                  }}
+                >
+                  <Text style={[styles.filterText, timeWindow === option.value && styles.filterTextActive]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       {/* Map or List View */}
@@ -714,9 +792,17 @@ export default function FuelPricesScreen() {
           {stations.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="list-outline" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No fuel price data nearby</Text>
+              <Text style={styles.emptyText}>
+                {timeWindow === 'today' 
+                  ? 'No prices reported today' 
+                  : timeWindow === '24h'
+                  ? 'No prices in the last 24 hours'
+                  : 'No fuel price data nearby'}
+              </Text>
               <Text style={styles.emptySubtext}>
-                Be the first to contribute by logging your fuel purchases!
+                {timeWindow === 'today' || timeWindow === '24h'
+                  ? 'Try expanding the time window or contribute by logging your fuel!'
+                  : 'Be the first to contribute by logging your fuel purchases!'}
               </Text>
             </View>
           ) : (
@@ -790,10 +876,25 @@ export default function FuelPricesScreen() {
                     <Text style={styles.metaText}>
                       📊 {station.report_count} report{station.report_count > 1 ? 's' : ''}
                     </Text>
-                    <Text style={styles.metaText}>
-                      🕐 {new Date(station.last_updated).toLocaleDateString()}
-                    </Text>
+                    {station.hours_since_update !== undefined && (
+                      <View style={styles.freshnessBadge}>
+                        <Text style={styles.freshnessEmoji}>
+                          {getFreshnessBadge(station.hours_since_update).emoji}
+                        </Text>
+                        <Text style={[styles.freshnessText, { color: getFreshnessBadge(station.hours_since_update).color }]}>
+                          {getFreshnessBadge(station.hours_since_update).text}
+                        </Text>
+                      </View>
+                    )}
                   </View>
+                  
+                  {/* Fallback message if showing expanded time window */}
+                  {station.is_fallback && station.fallback_message && (
+                    <View style={styles.fallbackBanner}>
+                      <Ionicons name="information-circle" size={16} color="#F59E0B" />
+                      <Text style={styles.fallbackText}>{station.fallback_message}</Text>
+                    </View>
+                  )}
                   
                   {/* Expandable fuel prices section */}
                   {isExpanded && station.fuel_prices && station.fuel_prices.length > 0 && (
@@ -886,18 +987,16 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   filterButtonsRow: {
-    flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 10,
     gap: 8,
   },
   filterButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
+    gap: 4,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
     backgroundColor: '#F3F4F6',
@@ -909,7 +1008,7 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
   },
   filterButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#3B82F6',
   },
@@ -926,8 +1025,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 16,
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
@@ -938,7 +1037,7 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
   },
   filterText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     color: '#6B7280',
   },
@@ -1043,10 +1142,37 @@ const styles = StyleSheet.create({
   stationMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   metaText: {
     fontSize: 12,
     color: '#6B7280',
+  },
+  freshnessBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  freshnessEmoji: {
+    fontSize: 12,
+  },
+  freshnessText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  fallbackBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF3C7',
+    padding: 8,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  fallbackText: {
+    fontSize: 11,
+    color: '#92400E',
+    flex: 1,
   },
   fuelPricesContainer: {
     marginTop: 12,

@@ -25,6 +25,46 @@ class LocationService:
     NAME_SIMILARITY_THRESHOLD = 80  # 80% similarity for fuzzy matching
     
     @staticmethod
+    def _calculate_weighted_average(prices_with_dates):
+        """
+        Calculate weighted average where more recent prices have higher weight.
+        Weight formula: newer prices get exponentially more weight (recency bias).
+        
+        Args:
+            prices_with_dates: List of tuples (price, date)
+        
+        Returns:
+            Weighted average price
+        """
+        from datetime import datetime
+        
+        if not prices_with_dates:
+            return 0
+        
+        # Find most recent date
+        max_date = max(date for _, date in prices_with_dates)
+        
+        weighted_sum = 0
+        total_weight = 0
+        
+        for price, date in prices_with_dates:
+            # Calculate days difference from most recent
+            days_old = (max_date - date).days
+            
+            # Weight formula: exponential decay (0.85^days_old)
+            # Day 0 (today): weight = 1.0
+            # Day 1: weight = 0.85
+            # Day 2: weight = 0.72
+            # Day 3: weight = 0.61
+            # Day 7: weight = 0.32
+            weight = 0.85 ** days_old
+            
+            weighted_sum += price * weight
+            total_weight += weight
+        
+        return weighted_sum / total_weight if total_weight > 0 else 0
+    
+    @staticmethod
     def normalize_location(raw_address: str) -> Dict[str, str]:
         """
         Extract brand and street from raw address.
@@ -304,17 +344,20 @@ class LocationService:
             
             # Calculate overall statistics and per-fuel-type statistics
             all_prices = []
+            all_prices_with_dates = []  # Store prices with their dates for weighted average
             fuel_prices_array = []
             last_updated = None
             
             for fuel_type_name, type_logs in logs_by_fuel_type.items():
                 # Calculate price statistics for this fuel type
                 prices_per_liter = []
+                prices_with_dates = []
                 for log in type_logs:
                     fuel_amount = float(log.liters or log.kwh or 0)
                     if fuel_amount > 0 and log.cost:
                         price_per_liter = float(log.cost) / fuel_amount
                         prices_per_liter.append(price_per_liter)
+                        prices_with_dates.append((price_per_liter, log.date))
                 
                 if not prices_per_liter:
                     continue
@@ -324,10 +367,13 @@ class LocationService:
                 if last_updated is None or fuel_type_last_updated > last_updated:
                     last_updated = fuel_type_last_updated
                 
+                # Calculate weighted average (recent prices get more weight)
+                weighted_avg = LocationService._calculate_weighted_average(prices_with_dates)
+                
                 # Add to fuel prices array
                 fuel_prices_array.append({
                     "fuel_type": fuel_type_name,
-                    "avg_price_per_liter": round(sum(prices_per_liter) / len(prices_per_liter), 2),
+                    "avg_price_per_liter": round(weighted_avg, 2),
                     "min_price": round(min(prices_per_liter), 2),
                     "max_price": round(max(prices_per_liter), 2),
                     "report_count": len(prices_per_liter)
@@ -335,9 +381,16 @@ class LocationService:
                 
                 # Add to overall prices for station average
                 all_prices.extend(prices_per_liter)
+                all_prices_with_dates.extend(prices_with_dates)
             
             if not all_prices or not fuel_prices_array:
                 continue
+            
+            # Calculate hours since last update
+            hours_since_update = int((datetime.now() - datetime.combine(last_updated, datetime.min.time())).total_seconds() / 3600)
+            
+            # Calculate weighted overall average
+            overall_weighted_avg = LocationService._calculate_weighted_average(all_prices_with_dates)
             
             # Calculate overall statistics
             results.append({
@@ -346,11 +399,12 @@ class LocationService:
                 "latitude": float(cluster.latitude),
                 "longitude": float(cluster.longitude),
                 "distance_km": round(distance, 2),
-                "avg_price_per_liter": round(sum(all_prices) / len(all_prices), 2),
+                "avg_price_per_liter": round(overall_weighted_avg, 2),
                 "min_price": round(min(all_prices), 2),
                 "max_price": round(max(all_prices), 2),
                 "report_count": len(all_prices),
                 "last_updated": last_updated.isoformat(),
+                "hours_since_update": hours_since_update,
                 "brand": cluster.brand,
                 "fuel_prices": fuel_prices_array  # Array of prices by fuel type
             })
